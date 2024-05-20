@@ -5,7 +5,7 @@ from datetime import datetime
 import json
 from dotenv import load_dotenv
 import os
-import airportsdata
+import FlightSearcher
 # Load environment variables from .env file
 load_dotenv()
 
@@ -13,13 +13,8 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 SERPAPI_API_KEY = os.getenv('SERPAPI_API_KEY')
 
-
-# Replace with your actual API keys
-
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Load airport data
-airports = airportsdata.load('IATA') 
 
 def get_trip_details():
     start_date = input("Enter the start date of your trip (YYYY-MM-DD): ")
@@ -29,51 +24,51 @@ def get_trip_details():
 
     return start_date, end_date, budget, trip_type
 
-def get_possible_destinations(start_date, end_date, trip_type):
+def get_possible_destinations(start_date, end_date, trip_type, numeber_of_destinations=5):
     prompt = (
-    f"Suggest 5 possible places in the world for a {trip_type} trip "
+    f"Suggest {numeber_of_destinations} possible places in the world for a {trip_type} trip "
     f"from {start_date} to {end_date}. Consider the season, weather, and activities "
     f"suitable for this type of trip during this time."
-    f"respond in json format"
+    f"for each destination, provide the closest city with an airport and the airport code."
+    f"in case of problems with the airport, provide an alternative close airport to the destination, and its code."
+    f"respond only with the city and destination names and airport code in the following format: "
+    f"[index]. City: [city name], Destination: [destination name], Airport: [airport code], Alternative: [alternative_airport_code]."
     )
     response = client.chat.completions.create(model="gpt-3.5-turbo",
     messages=[
         {"role": "system", "content": "You are a travel assistant."},
         {"role": "user", "content": prompt}
     ])
-    destinations = response.choices[0].message.content.strip().split("\n")
-    print('response', response)
+    destinations = response.choices[0].message.content
+    print(destinations)
     return destinations
 
-def get_airport_codes(destinations):
-    city_airport_codes = {}
-    for destination in destinations:
-        city = destination['name']
+def parse_destinations(possible_destinations):
+    # Split the response by newline character to get individual lines
+    lines = possible_destinations.strip().split('\n')
+    cities = []
+    destinations = []
+    # Iterate over each line and extract city and destination
+    for line in lines:
+        city_start_index = line.find('City: ') + len('City: ')
+        city_end_index = line.find(', Destination: ')
+        city_with_info = line[city_start_index:city_end_index].strip()
 
-        airport_code = destination['code']
+        # Strip additional information from the city
+        city_parts = city_with_info.split(',')
+        city = city_parts[0].strip()
 
-        city_airport_codes[city] = airport_code
-    return city_airport_codes
+        destination_start_index = line.find('Destination: ') + len('Destination: ')
+        destination = line[destination_start_index:].strip()
 
-def get_cheapest_flight(destinations, start_date, end_date, budget):
-    flights = []
-    # each destination is a dict of name and code
-    for destination in destinations:
-        params = {
-            "engine": "google_flights",
-            "departure_id": "TLV",    #Tel Aviv
-            "arrival_id": "",      #destination code
-            "outbound_date": start_date,
-            "return_date": end_date,
-            "currency": "USD",
-            "hl": "en",
-            "api_key": SERPAPI_API_KEY
-            }
+        cities.append(city)
+        destinations.append(destination)
 
-        flight_search = GoogleSearch(params)
-        flight_result = flight_search.get_dict()
-        cheapest_flight = min(flight_result, key=lambda f: f.price)
-        flights.append(cheapest_flight)
+    # Print the extracted cities and destinations
+    for city, destination in zip(cities, destinations):
+        print(f"City: {city}, Destination: {destination}")
+
+    return cities, destinations
 
 def get_hotel_in_budget(destinations, budget, start_date, end_date):
     hotels = []
@@ -87,8 +82,7 @@ def get_hotel_in_budget(destinations, budget, start_date, end_date):
         }
         hotels_search = GoogleSearch(params)
         results = hotels_search.get_dict()
-        hotels_data = 
-        hotel = max(hotels_data['hotels_results'], key=lambda x: x['price'], default=None)
+        hotel = max(results['hotels_results'], key=lambda x: x['price'], default=None)
         if hotel and hotel['price'] <= budget:
             hotels.append({
                 "destination": destination,
@@ -124,9 +118,31 @@ def display_options(hotels):
 
 def main():
     start_date, end_date, budget, trip_type = get_trip_details()
-    destinations = get_possible_destinations(start_date, end_date, trip_type)
-    print("destinations", destinations)
-    city_airport_codes = get_airport_codes(destinations)
+
+    #  until the openAPI is fixed, we will use a hardcoded list of destinations
+    # openai_dest_response = """
+    #             1. City: Tokyo, Destination: Cherry Blossom Viewing in Shinjuku Gyoen Park
+    #             2. City: Sydney, Destination: Bondi Beach for Surfing and Sunbathing
+    #             3. City: Rio de Janeiro, Destination: Hiking to the Christ the Redeemer Statue
+    #             4. City: Cape Town, Destination: Wine Tasting in Stellenbosch Winelands
+    #             5. City: Reykjavik, Destination: Northern Lights Viewing in Thingvellir National Park
+    #             """
+ 
+    possible_destinations = get_possible_destinations(start_date, end_date, trip_type)
+    cities, destinations = parse_destinations(possible_destinations)
+
+    flights_info = FlightSearcher.get_flights(cities, start_date, end_date, budget)
+
+    while len(flights_info) != 5:
+        print("still need more flights...")
+        numer_of_new_destinations = 5 - len(flights_info)
+        new_destinations = get_possible_destinations(start_date, end_date, trip_type, numer_of_new_destinations)
+        new_cities, new_destinations = parse_destinations(new_destinations)
+        flights_info += FlightSearcher.get_flights(new_cities, start_date, end_date, budget)
+
+    print(" flights", flights_info)
+    for info in flights_info:
+        print("info", info)
 
     # hotels = get_hotel_in_budget(destinations, budget, start_date, end_date)
     # print("hotels", hotels)
