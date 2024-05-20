@@ -30,9 +30,8 @@ def get_possible_destinations(start_date, end_date, trip_type, numeber_of_destin
     f"from {start_date} to {end_date}. Consider the season, weather, and activities "
     f"suitable for this type of trip during this time."
     f"for each destination, provide the closest city with an airport and the airport code."
-    f"in case of problems with the airport, provide an alternative close airport to the destination, and its code."
     f"respond only with the city and destination names and airport code in the following format: "
-    f"[index]. City: [city name], Destination: [destination name], Airport: [airport code], Alternative: [alternative_airport_code]."
+    f"[index]. City: [city name], Destination: [destination name], Airport: [airport code]."
     )
     response = client.chat.completions.create(model="gpt-3.5-turbo",
     messages=[
@@ -48,7 +47,9 @@ def parse_destinations(possible_destinations):
     lines = possible_destinations.strip().split('\n')
     cities = []
     destinations = []
-    # Iterate over each line and extract city and destination
+    airports = []
+
+    # Iterate over each line and extract city, destination, airport, and alternative airport
     for line in lines:
         city_start_index = line.find('City: ') + len('City: ')
         city_end_index = line.find(', Destination: ')
@@ -59,16 +60,21 @@ def parse_destinations(possible_destinations):
         city = city_parts[0].strip()
 
         destination_start_index = line.find('Destination: ') + len('Destination: ')
-        destination = line[destination_start_index:].strip()
+        destination_end_index = line.find(', Airport: ')
+        destination = line[destination_start_index:destination_end_index].strip()
+
+        airport_start_index = line.find('Airport: ') + len('Airport: ')
+        airport = line[airport_start_index:].strip()
 
         cities.append(city)
         destinations.append(destination)
+        airports.append(airport)
 
-    # Print the extracted cities and destinations
-    for city, destination in zip(cities, destinations):
-        print(f"City: {city}, Destination: {destination}")
+    # Print the extracted cities, destinations, airports, and alternative airports
+    for city, destination, airport in zip(cities, destinations, airports):
+        print(f"City: {city}, Destination: {destination}, Airport: {airport}")
 
-    return cities, destinations
+    return cities, destinations, airports
 
 def get_hotel_in_budget(destinations, budget, start_date, end_date):
     hotels = []
@@ -118,31 +124,35 @@ def display_options(hotels):
 
 def main():
     start_date, end_date, budget, trip_type = get_trip_details()
-
+    serapi_tries = 0
+    possible_destinations = []
     #  until the openAPI is fixed, we will use a hardcoded list of destinations
     # openai_dest_response = """
-    #             1. City: Tokyo, Destination: Cherry Blossom Viewing in Shinjuku Gyoen Park
-    #             2. City: Sydney, Destination: Bondi Beach for Surfing and Sunbathing
-    #             3. City: Rio de Janeiro, Destination: Hiking to the Christ the Redeemer Statue
-    #             4. City: Cape Town, Destination: Wine Tasting in Stellenbosch Winelands
-    #             5. City: Reykjavik, Destination: Northern Lights Viewing in Thingvellir National Park
+    #                 1. City: Queenstown, momoeg Destination: The Remarkables, Airport: ZQN, Alternative: DUD
+    #                 2. City: Wanaka, rhryj Destination: Treble Cone, Airport: ZQN, Alternative: DUD
+    #                 3. City: Santiago, ryhj5jy Destination: Valle Nevado, Airport: SCL, Alternative: LSC
+    #                 4. City: Christchurch, ryjtjy Destination: Mount Hutt, Airport: CHC, Alternative: ZQN
+    #                 5. City: Mendoza, ryjyjytj Destination: Las Leñas, Airport: MDZ, Alternative: AEP
     #             """
- 
-    possible_destinations = get_possible_destinations(start_date, end_date, trip_type)
-    cities, destinations = parse_destinations(possible_destinations)
+    
+    while len(possible_destinations) < 5 and serapi_tries < 3:
+        possible_destinations = get_possible_destinations(start_date, end_date, trip_type)
+        cities, destinations, airport_codes = parse_destinations(possible_destinations)
 
-    flights_info = FlightSearcher.get_flights(cities, start_date, end_date, budget)
+        flights_info = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budget)
+        print("flights_info", flights_info)
+        serapi_tries += 1
 
-    while len(flights_info) != 5:
-        print("still need more flights...")
-        numer_of_new_destinations = 5 - len(flights_info)
-        new_destinations = get_possible_destinations(start_date, end_date, trip_type, numer_of_new_destinations)
-        new_cities, new_destinations = parse_destinations(new_destinations)
-        flights_info += FlightSearcher.get_flights(new_cities, start_date, end_date, budget)
+    # while len(flights_info) != 5:
+    #     print("still need more flights...")
+    #     numer_of_new_destinations = 5 - len(flights_info)
+    #     new_destinations = get_possible_destinations(start_date, end_date, trip_type, numer_of_new_destinations)
+    #     new_cities, new_destinations = parse_destinations(new_destinations)
+    #     flights_info += FlightSearcher.get_flights(new_cities, start_date, end_date, budget)
 
-    print(" flights", flights_info)
-    for info in flights_info:
-        print("info", info)
+    # print(" flights", flights_info)
+    # for info in flights_info:
+    #     print("info", info)
 
     # hotels = get_hotel_in_budget(destinations, budget, start_date, end_date)
     # print("hotels", hotels)

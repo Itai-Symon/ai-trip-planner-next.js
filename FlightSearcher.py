@@ -99,20 +99,20 @@ def get_cheapest_flight(flight_result, budget = float(0)):
 
     return flights_info
 
-def get_flights(cities, start_date, end_date, budget):
+def get_flights(cities, airport_codes, start_date, end_date, budget):
     flights = []
     # each destination is a name
-    for city in cities:
-        airport_code = get_airport_code(city)
+    for index, city in enumerate(cities):
+        # airport_code = get_airport_code(city)
         
-        if not airport_code:
-            print(f"No airport found for the city: {city}.")
-            continue
+        # if not airport_code:
+        #     print(f"No airport found for the city: {city}.")
+        #     continue
 
         params = {
             "engine": "google_flights",
             "departure_id": "TLV",    #Tel Aviv
-            "arrival_id": airport_code,  #destination code
+            "arrival_id": airport_codes[index],  #destination code
             "outbound_date": start_date,
             "return_date": end_date,
             "currency": "USD",
