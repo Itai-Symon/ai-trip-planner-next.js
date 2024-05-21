@@ -52,11 +52,7 @@ def get_cheapest_flight(flight_result, budget = float(0)):
     print("-----------------------------------")
     print("lowest_price", lowest_price)
     print("-----------------------------------")
-    # if lowest_price >= budget:
-    #     print(f"No suitable flights found within the budget.")
-    #     return None
     
-
     # Initialize variable to keep track of the cheapest flight
     cheapest_flight = None
     cheapest_flight_price = float('inf')
@@ -70,10 +66,7 @@ def get_cheapest_flight(flight_result, budget = float(0)):
                 elif flight['price'] < cheapest_flight_price:
                     cheapest_flight_price = flight['price']
                     cheapest_flight = flight
-        else:
-            print(f"No {flight_category} found in the flight result.")
-            continue
-
+            
     flights_info = []
 
     if cheapest_flight is not None:
@@ -100,6 +93,24 @@ def get_cheapest_flight(flight_result, budget = float(0)):
 
     return flights_info
 
+def get_return_flight(departure_token, params):
+    flight = None
+
+    params['departure_token'] = departure_token
+    flight_search = GoogleSearch(params)
+    flight_result = flight_search.get_dict()
+    print("return_flights_result", flight_result)
+
+    if 'best_flights' in flight_result:
+        flight = flight_result.get('best_flights', [])[0]
+    elif 'other_flights' in flight_result:
+        flight = flight_result.get('other_flights', [])[0]
+    
+    if 'error' in flight_result:
+        print(f"Error: {flight_result['error']}")
+
+    return flight
+
 def get_flights(cities, airport_codes, start_date, end_date, budget):
     flights = []
     return_flights = []
@@ -107,18 +118,15 @@ def get_flights(cities, airport_codes, start_date, end_date, budget):
     # validations
     if len(cities) != len(airport_codes):
         print("The number of cities and airport codes should be the same.")
-        return flights, return_flights
+        return flights, return_flights, []
     if budget <= 0:
         print("The budget should be greater than 0.")
-        return flights, return_flights
+        return flights, return_flights, []
 
     # each destination is a name
     for index, city in enumerate(cities):
-        # airport_code = get_airport_code(city)
-        
-        # if not airport_code:
-        #     print(f"No airport found for the city: {city}.")
-        #     continue
+        print(f"Searching for flights to {city}...")
+        chosen_cities = []
 
         params = {
             "engine": "google_flights",
@@ -146,24 +154,12 @@ def get_flights(cities, airport_codes, start_date, end_date, budget):
             print(f"No flights found for {city}.")
         else:
             print("cheapest_flight", cheapest_flight)
-            flights.append(cheapest_flight)
-            return_flights.append(get_return_flight(cheapest_flight[0]['departure_token'], params))
 
-    return flights, return_flights
+            return_flight = get_return_flight(cheapest_flight[0]['departure_token'], params)
+            if (return_flight is not None) and ('error' not in return_flight):
+                flights.append(cheapest_flight)
+                return_flights.append(return_flight)
+                chosen_cities.append(city)
 
-def get_return_flight(departure_token, params):
-    flight = None
-
-    params['departure_token'] = departure_token
-    flight_search = GoogleSearch(params)
-    flight_result = flight_search.get_dict()
-    print("return_flights_result", flight_result)
-
-    if 'best_flights' in flight_result:
-        flight = flight_result.get('best_flights', [])[0]
-    
-    if 'error' in flight_result:
-        print(f"Error: {flight_result['error']}")
-
-    return flight
+    return flights, return_flights, chosen_cities
 

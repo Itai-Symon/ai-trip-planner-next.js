@@ -24,20 +24,30 @@ def get_trip_details():
 
     return start_date, end_date, budget, trip_type
 
-def get_possible_destinations(start_date, end_date, trip_type, numeber_of_destinations=5):
+def get_possible_destinations(start_date, end_date, trip_type, numeber_of_destinations=5, chosen_cities=[]):
     prompt = (
-    f"Suggest {numeber_of_destinations} possible places in the world for a {trip_type} trip "
-    f"from {start_date} to {end_date}. Consider the season, weather, and activities "
-    f"suitable for this type of trip during this time."
-    f"for each destination, provide the closest city with an airport and the airport code."
-    f"respond only with the city and destination names and airport code in the following format: "
-    f"[index]. City: [city name], Destination: [destination name], Airport: [airport code]."
+        f"Suggest {numeber_of_destinations} possible places in the world for a {trip_type} trip "
+        f"from {start_date} to {end_date}. Consider the season, weather, and activities "
+        f"suitable for this type of trip during this time."
     )
-    response = client.chat.completions.create(model="gpt-3.5-turbo",
-    messages=[
-        {"role": "system", "content": "You are a travel assistant."},
-        {"role": "user", "content": prompt}
-    ])
+    
+    if chosen_cities:
+        prompt += f" Exclude the following cities: {', '.join(chosen_cities)}."
+        
+    prompt += (
+        f" For each destination, provide the closest city with an airport and the airport code."
+        f" Respond only with the city and destination names and airport code in the following format: "
+        f"[index]. City: [city name], Destination: [destination name], Airport: [airport code]."
+    )
+    
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": "You are a travel assistant."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    
     destinations = response.choices[0].message.content
     print(destinations)
     return destinations
@@ -122,21 +132,43 @@ def display_options(hotels):
     choice = int(input("Choose a destination (1-5): ")) - 1
     return hotels[choice]
 
+def print_flights_state(going_flights_info, returning_flights_info, serapi_tries):
+    print('-'*50)
+    print("going flight information, amount:", len(going_flights_info))
+    print(going_flights_info)
+    print('#'*50)
+    print("returning flight information, amount:", len(returning_flights_info))
+    print(returning_flights_info)
+    print('-'*50)
+
+    print('*'*50)
+    print("missing destinations:", 5 - len(going_flights_info))
+    print("try number:", serapi_tries)
+    print('*'*50)
+
 def main():
     start_date, end_date, budget, trip_type = get_trip_details()
     serapi_tries = 0
+    number_of_missing_destinations = 5
     possible_destinations = []
+    chosen_cities = []
+    going_flights_info = []
+    returning_flights_info = []
     print("buget", budget)
-    while len(possible_destinations) < 5 and serapi_tries < 3:
-        possible_destinations = get_possible_destinations(start_date, end_date, trip_type)
+    while number_of_missing_destinations < 5 and serapi_tries < 3:
+        # get_possible_destinations(start_date, end_date, trip_type, numeber_of_destinations=5, chosen_cities=[]):
+        possible_destinations = get_possible_destinations(start_date, end_date, trip_type, number_of_missing_destinations, chosen_cities)
         cities, destinations, airport_codes = parse_destinations(possible_destinations)
 
-        flights_info = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budget)
-        print('-'*50)
-        print("flights_info", flights_info)
-        print('-'*50)
+        added_going_flights_info, added_returning_flights_info, chosen_cities = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budget)
+        going_flights_info.append(added_going_flights_info)
+        returning_flights_info.append(added_returning_flights_info)
+        print_flights_state(going_flights_info, returning_flights_info, serapi_tries)
+        number_of_missing_destinations = 5 - len(going_flights_info)
+
         serapi_tries += 1
 
+    print("finished getting flights") 
     # while len(flights_info) != 5:
     #     print("still need more flights...")
     #     numer_of_new_destinations = 5 - len(flights_info)
