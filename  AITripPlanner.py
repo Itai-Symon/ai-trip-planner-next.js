@@ -6,6 +6,8 @@ import json
 from dotenv import load_dotenv
 import os
 import FlightSearcher
+import HotelSearcher
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -31,7 +33,7 @@ def get_possible_destinations(start_date, end_date, trip_type, numeber_of_destin
         f"suitable for this type of trip during this time."
     )
     
-    if chosen_cities:
+    if chosen_cities is not None and len(chosen_cities) > 0:
         prompt += f" Exclude the following cities: {', '.join(chosen_cities)}."
         
     prompt += (
@@ -47,7 +49,7 @@ def get_possible_destinations(start_date, end_date, trip_type, numeber_of_destin
             {"role": "user", "content": prompt}
         ]
     )
-    
+    print("prompt", prompt)
     destinations = response.choices[0].message.content
     print(destinations)
     return destinations
@@ -85,27 +87,6 @@ def parse_destinations(possible_destinations):
         print(f"City: {city}, Destination: {destination}, Airport: {airport}")
 
     return cities, destinations, airports
-
-def get_hotel_in_budget(destinations, budget, start_date, end_date):
-    hotels = []
-    for destination in destinations:
-        params = {
-            "engine": "google_hotels",
-            "q": destination,
-            "start_date": start_date,
-            "end_date": end_date,
-            "api_key": SERPAPI_API_KEY
-        }
-        hotels_search = GoogleSearch(params)
-        results = hotels_search.get_dict()
-        hotel = max(results['hotels_results'], key=lambda x: x['price'], default=None)
-        if hotel and hotel['price'] <= budget:
-            hotels.append({
-                "destination": destination,
-                "hotel": hotel['name'],
-                "price": hotel['price']
-            })
-    return hotels
 
 def create_daily_plan(destination, start_date, end_date):
     prompt = f"Create a daily plan for a trip to {destination} from {start_date} to {end_date}."
@@ -154,37 +135,34 @@ def main():
     chosen_cities = []
     going_flights_info = []
     returning_flights_info = []
+    # crate list of size 5 of duplicated budget values
+    budget = [budget] * 5
     print("buget", budget)
-    while number_of_missing_destinations < 5 and serapi_tries < 3:
-        # get_possible_destinations(start_date, end_date, trip_type, numeber_of_destinations=5, chosen_cities=[]):
+    while number_of_missing_destinations > 0 and serapi_tries < 1:
+
+        print('.'*50)
+        print("chosen_cities", chosen_cities)
+        print('.'*50)
+
         possible_destinations = get_possible_destinations(start_date, end_date, trip_type, number_of_missing_destinations, chosen_cities)
         cities, destinations, airport_codes = parse_destinations(possible_destinations)
 
-        added_going_flights_info, added_returning_flights_info, chosen_cities = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budget)
-        going_flights_info.append(added_going_flights_info)
-        returning_flights_info.append(added_returning_flights_info)
-        print_flights_state(going_flights_info, returning_flights_info, serapi_tries)
-        number_of_missing_destinations = 5 - len(going_flights_info)
+        # added_going_flights_info, added_returning_flights_info, chosen_cities, successful_retrieved_flights, budget = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budget)
+        # going_flights_info.append(added_going_flights_info)
+        # returning_flights_info.append(added_returning_flights_info)
+        # print_flights_state(going_flights_info, returning_flights_info, serapi_tries)
+        # number_of_missing_destinations -= successful_retrieved_flights
 
         serapi_tries += 1
 
     print("finished getting flights") 
-    # while len(flights_info) != 5:
-    #     print("still need more flights...")
-    #     numer_of_new_destinations = 5 - len(flights_info)
-    #     new_destinations = get_possible_destinations(start_date, end_date, trip_type, numer_of_new_destinations)
-    #     new_cities, new_destinations = parse_destinations(new_destinations)
-    #     flights_info += FlightSearcher.get_flights(new_cities, start_date, end_date, budget)
 
-    # print(" flights", flights_info)
-    # for info in flights_info:
-    #     print("info", info)
-
-    # hotels = get_hotel_in_budget(destinations, budget, start_date, end_date)
-    # print("hotels", hotels)
-    # if not hotels:
-        # print("No suitable hotels found within the budget.")
-        # return
+    hotels = HotelSearcher.get_hotel_in_budget(destinations, budget, start_date, end_date)
+    print("hotels", hotels)
+    
+    if not hotels:
+        print("No suitable hotels found within the budget.")
+        return
 
     # chosen_option = display_options(hotels)
     # trip_plan = create_daily_plan(chosen_option['destination'], start_date, end_date)

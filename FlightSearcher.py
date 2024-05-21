@@ -14,68 +14,38 @@ SERPAPI_API_KEY = os.getenv('SERPAPI_API_KEY')
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Load airport data
-airports = airportsdata.load('IATA') 
 
-def get_closest_city_with_airport(city):
-    prompt = (
-        f"Find the closest city with an airport to {city}."
-        f"respond only with the city name."
-    )
-    response = client.chat.completions.create(model="gpt-3.5-turbo",
-    messages=[
-        {"role": "system", "content": "You are a geographical assistant."},
-        {"role": "user", "content": prompt}
-    ])
-    closest_city_with_airport = response.choices[0].message.content
-    print(closest_city_with_airport)
-    return closest_city_with_airport
-
-def get_airport_code(city):
-    airport_code_according_to_city = None
-
-    for code, airport in airports.items():
-        if airport['city'].lower() == city.lower():
-            airport_code_according_to_city = code
-            break
-
-    if airport_code_according_to_city:
-        print(f"The airport code for {city} is {airport_code_according_to_city}.")
-    else:
-        print(f"No airport found for the city: {city}.")
-        get_airport_code(get_closest_city_with_airport(city))
+def get_cheapest_flight(flight_result, budget = 0, city = ''):
     
-    return airport_code_according_to_city
-
-def get_cheapest_flight(flight_result, budget = float(0)):
-    lowest_price = flight_result.get('price_insights', {}).get('lowest_price', float('inf'))
+    lowest_price = flight_result.get('price_insights', {}).get('lowest_price', 0)
     print("-----------------------------------")
     print("lowest_price", lowest_price)
     print("-----------------------------------")
     
-    # Initialize variable to keep track of the cheapest flight
     cheapest_flight = None
-    cheapest_flight_price = float('inf')
-    # Check in both best_flights and other_flights for the lowest price
+    cheapest_flight_price = budget
+    
+    # find the cheapest flight
     for flight_category in ['best_flights', 'other_flights']:
         if flight_category in flight_result:
-            for flight in flight_result.get(flight_category, []):
+            for flight in flight_result[flight_category]:
                 if flight['price'] == lowest_price:
                     cheapest_flight = flight
+                    cheapest_flight_price = lowest_price
                     break
                 elif flight['price'] < cheapest_flight_price:
                     cheapest_flight_price = flight['price']
                     cheapest_flight = flight
             
-    flights_info = []
+    flights_info = {city: {}}
 
+    # add the cheapest flight details
     if cheapest_flight is not None:
-        flights_info.append({
-        'price': cheapest_flight['price'],
-        'departure_token': cheapest_flight['departure_token']
-        })
+        flights_info[city]['price'] = cheapest_flight['price']
+        flights_info[city]['departure_token'] = cheapest_flight['departure_token']
+        flights_info[city]['flights'] = {}
         for flight in cheapest_flight['flights']:
-            flight_details = {
+            flights_info[city]['flights'][flight['flight_number']] = {
                 'departure_airport_name': flight['departure_airport']['name'],
                 'departure_time': flight['departure_airport']['time'],
                 'arrival_airport_name': flight['arrival_airport']['name'],
@@ -84,16 +54,10 @@ def get_cheapest_flight(flight_result, budget = float(0)):
                 'airline': flight['airline'],
                 'flight_number': flight['flight_number'],
             }
-            if 'ticket_also_sold_by' in flight:
-                flight_details['ticket_also_sold_by'] = flight['ticket_also_sold_by']
-            if 'overnight' in flight:
-                flight_details['overnight'] = flight['overnight']
             
-            flights_info.append(flight_details)
+    return flights_info, cheapest_flight_price
 
-    return flights_info
-
-def get_return_flight(departure_token, params):
+def get_return_flight(departure_token, params, city):
     flight = None
 
     params['departure_token'] = departure_token
@@ -101,26 +65,35 @@ def get_return_flight(departure_token, params):
     flight_result = flight_search.get_dict()
     print("return_flights_result", flight_result)
 
-    if 'best_flights' in flight_result:
-        flight = flight_result.get('best_flights', [])[0]
-    elif 'other_flights' in flight_result:
-        flight = flight_result.get('other_flights', [])[0]
-    
-    if 'error' in flight_result:
-        print(f"Error: {flight_result['error']}")
+    flight_raw = None
+    if 'best_flights' in flight_result and flight_result['best_flights']:
+        flight_raw = flight_result['best_flights'][0]
+    elif 'other_flights' in flight_result and flight_result['other_flights']:
+        flight_raw = flight_result['other_flights'][0]
 
-    return flight
+    flights_info = {city: {}}
+
+    if flight_raw and 'flights' in flight_raw:
+        flights_info[city]['flights'] = {}
+        for flight in flight_raw['flights']:
+            flights_info[city]['flights'][flight['flight_number']] = {
+                'departure_airport_name': flight['departure_airport']['name'],
+                'departure_time': flight['departure_airport']['time'],
+                'arrival_airport_name': flight['arrival_airport']['name'],
+                'arrival_time': flight['arrival_airport']['time'],
+                'duration': flight['duration'],
+                'airline': flight['airline'],
+                'flight_number': flight['flight_number'],
+            }
+    return flights_info
 
 def get_flights(cities, airport_codes, start_date, end_date, budget):
     flights = []
     return_flights = []
-    
+    successfully_retrieved_flights = 0
     # validations
     if len(cities) != len(airport_codes):
         print("The number of cities and airport codes should be the same.")
-        return flights, return_flights, []
-    if budget <= 0:
-        print("The budget should be greater than 0.")
         return flights, return_flights, []
 
     # each destination is a name
@@ -136,7 +109,7 @@ def get_flights(cities, airport_codes, start_date, end_date, budget):
             "return_date": end_date,
             "currency": "USD",
             "hl": "en",
-            "max_price": budget,
+            "max_price": budget[index],
             "api_key": SERPAPI_API_KEY
             }
 
@@ -148,18 +121,28 @@ def get_flights(cities, airport_codes, start_date, end_date, budget):
             print(f"Error: {flight_result['error']}")
             continue
 
-        cheapest_flight = get_cheapest_flight(flight_result)
+        cheapest_flight, budget[index] = get_cheapest_flight(flight_result, budget[index], city)
     
         if cheapest_flight is None:
             print(f"No flights found for {city}.")
         else:
+            print("-----------------------------------")
             print("cheapest_flight", cheapest_flight)
-
-            return_flight = get_return_flight(cheapest_flight[0]['departure_token'], params)
+            print("-----------------------------------")    
+            return_flight = get_return_flight(cheapest_flight[city]['departure_token'], params, city)
             if (return_flight is not None) and ('error' not in return_flight):
                 flights.append(cheapest_flight)
                 return_flights.append(return_flight)
                 chosen_cities.append(city)
+                successfully_retrieved_flights += 1
+    
+    print('='*50)
+    print("flights", flights)
+    print('*'*50)
+    print("return_flights", return_flights)
+    print('*'*50)
+    print("chosen_cities", chosen_cities)
+    print('='*50)
 
-    return flights, return_flights, chosen_cities
+    return flights, return_flights, chosen_cities, successfully_retrieved_flights, budget
 
