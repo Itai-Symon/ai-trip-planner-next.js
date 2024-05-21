@@ -49,13 +49,14 @@ def get_airport_code(city):
 
 def get_cheapest_flight(flight_result, budget = float(0)):
     lowest_price = flight_result.get('price_insights', {}).get('lowest_price', float('inf'))
-    if lowest_price >= budget:
-        print(f"No suitable flights found within the budget.")
-        return None
-    
     print("-----------------------------------")
     print("lowest_price", lowest_price)
     print("-----------------------------------")
+    # if lowest_price >= budget:
+    #     print(f"No suitable flights found within the budget.")
+    #     return None
+    
+
     # Initialize variable to keep track of the cheapest flight
     cheapest_flight = None
     cheapest_flight_price = float('inf')
@@ -101,6 +102,16 @@ def get_cheapest_flight(flight_result, budget = float(0)):
 
 def get_flights(cities, airport_codes, start_date, end_date, budget):
     flights = []
+    return_flights = []
+    
+    # validations
+    if len(cities) != len(airport_codes):
+        print("The number of cities and airport codes should be the same.")
+        return flights, return_flights
+    if budget <= 0:
+        print("The budget should be greater than 0.")
+        return flights, return_flights
+
     # each destination is a name
     for index, city in enumerate(cities):
         # airport_code = get_airport_code(city)
@@ -117,12 +128,11 @@ def get_flights(cities, airport_codes, start_date, end_date, budget):
             "return_date": end_date,
             "currency": "USD",
             "hl": "en",
+            "max_price": budget,
             "api_key": SERPAPI_API_KEY
             }
 
         flight_search = GoogleSearch(params)
-        # print("flight_search", flight_search.get_json())
-        
         flight_result = flight_search.get_dict()
         print("flight_result", flight_result)
         
@@ -131,14 +141,29 @@ def get_flights(cities, airport_codes, start_date, end_date, budget):
             continue
 
         cheapest_flight = get_cheapest_flight(flight_result)
-        print("cheapest_flight", cheapest_flight)
-
+    
         if cheapest_flight is None:
             print(f"No flights found for {city}.")
         else:
-            for field in cheapest_flight:
-                print(field)
+            print("cheapest_flight", cheapest_flight)
             flights.append(cheapest_flight)
+            return_flights.append(get_return_flight(cheapest_flight[0]['departure_token'], params))
 
-    return flights
+    return flights, return_flights
+
+def get_return_flight(departure_token, params):
+    flight = None
+
+    params['departure_token'] = departure_token
+    flight_search = GoogleSearch(params)
+    flight_result = flight_search.get_dict()
+    print("return_flights_result", flight_result)
+
+    if 'best_flights' in flight_result:
+        flight = flight_result.get('best_flights', [])[0]
+    
+    if 'error' in flight_result:
+        print(f"Error: {flight_result['error']}")
+
+    return flight
 

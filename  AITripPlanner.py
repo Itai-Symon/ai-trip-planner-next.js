@@ -19,7 +19,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 def get_trip_details():
     start_date = input("Enter the start date of your trip (YYYY-MM-DD): ")
     end_date = input("Enter the end date of your trip (YYYY-MM-DD): ")
-    budget = float(input("Enter your total budget in USD: "))
+    budget = int(input("Enter your total budget in USD: "))
     trip_type = input("Enter the type of trip (ski/beach/city): ")
 
     return start_date, end_date, budget, trip_type
@@ -126,21 +126,15 @@ def main():
     start_date, end_date, budget, trip_type = get_trip_details()
     serapi_tries = 0
     possible_destinations = []
-    #  until the openAPI is fixed, we will use a hardcoded list of destinations
-    # openai_dest_response = """
-    #                 1. City: Queenstown, momoeg Destination: The Remarkables, Airport: ZQN, Alternative: DUD
-    #                 2. City: Wanaka, rhryj Destination: Treble Cone, Airport: ZQN, Alternative: DUD
-    #                 3. City: Santiago, ryhj5jy Destination: Valle Nevado, Airport: SCL, Alternative: LSC
-    #                 4. City: Christchurch, ryjtjy Destination: Mount Hutt, Airport: CHC, Alternative: ZQN
-    #                 5. City: Mendoza, ryjyjytj Destination: Las Leñas, Airport: MDZ, Alternative: AEP
-    #             """
-    
+    print("buget", budget)
     while len(possible_destinations) < 5 and serapi_tries < 3:
         possible_destinations = get_possible_destinations(start_date, end_date, trip_type)
         cities, destinations, airport_codes = parse_destinations(possible_destinations)
 
         flights_info = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budget)
+        print('-'*50)
         print("flights_info", flights_info)
+        print('-'*50)
         serapi_tries += 1
 
     # while len(flights_info) != 5:
