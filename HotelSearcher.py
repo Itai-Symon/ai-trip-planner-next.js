@@ -16,8 +16,9 @@ SERPAPI_API_KEY = os.getenv('SERPAPI_API_KEY')
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 def get_most_expensive_hotel(data):
-    most_expensive_hotel = {}
-    max_price = 0
+    chosen_hotel_data = {}
+    name = ''
+    max_price = data['properties'][0]['total_rate']['extracted_lowest']
         
     for property in data['properties']:
         if 'total_rate' in property and 'extracted_lowest' in property['total_rate']:
@@ -25,10 +26,23 @@ def get_most_expensive_hotel(data):
             if price > max_price:
                 print("price", price, "max_price", max_price)
                 max_price = price
-                most_expensive_hotel = property
+                name = property['name']
+                check_in_time = property['check_in_time']
+                check_out_time = property['check_out_time'] 
+                image_url = property['images'][0]
+                overall_rating = property['overall_rating']
+    
+    chosen_hotel_data['name'] = name
+    chosen_hotel_data['price'] = max_price
+    chosen_hotel_data['check_in_time'] = check_in_time
+    chosen_hotel_data['check_out_time'] = check_out_time
+    chosen_hotel_data['image_url'] = image_url
+    chosen_hotel_data['overall_rating'] = overall_rating
 
-    print(most_expensive_hotel['name'])
-    return most_expensive_hotel, max_price
+
+    print(name)
+
+    return chosen_hotel_data
 
 def get_hotel_in_budget(destinations, budget, start_date, end_date):
     hotels = []
@@ -48,16 +62,12 @@ def get_hotel_in_budget(destinations, budget, start_date, end_date):
 
         search = GoogleSearch(params)
         results = search.get_dict()
+        
         print("results", json.dumps(results, indent=4))
-        parse_results = json.dumps(results, indent=4)
-
         # retrieve the hotel with the maximum price that is within the budget[index]
-        hotel_name, hotel_price = get_most_expensive_hotel(parse_results)
-        if hotel_name and hotel_price < budget[index]:
-            hotels.append({
-                "destination": destination,
-                "hotel": hotel_name,
-                "price": hotel_price
-            })
+        chosen_hotel_data = get_most_expensive_hotel(results)
+        if chosen_hotel_data and chosen_hotel_data['price'] < budget[index]:
+            hotels[chosen_hotel_data['name']] = chosen_hotel_data
+        break
 
     return hotels
