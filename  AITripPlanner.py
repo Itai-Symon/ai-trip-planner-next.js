@@ -111,7 +111,9 @@ def display_options(hotels, destinations):
         print(f"Option {idx + 1}: {hotels[destination]} - {hotels[destination]['name']} - ${hotels[destination]['price']}")
 
     choice = int(input("Choose a destination (1-5): ")) - 1
-    return hotels[destinations[choice]]
+    chosen_option = hotels[destinations[choice]]
+    chosen_option['destination'] = destinations[choice]
+    return chosen_option
 
 def print_flights_state(going_flights_info, returning_flights_info, serapi_tries):
     print('-'*50)
@@ -169,8 +171,8 @@ def main():
     destinations = ['Iceland', 'Netherlands', 'Japan', 'Canada', 'Spain']
 
     chosen_option = display_options(hotels, destinations)
-    
-    # trip_plan = create_daily_plan(chosen_option['destination'], start_date, end_date)
+    print("chosen_option", chosen_option)
+    trip_plan = create_daily_plan(chosen_option['destination'], start_date, end_date)
     # trip_images = generate_trip_images(chosen_option['destination'])
 
     # print("\nTrip Summary:")
