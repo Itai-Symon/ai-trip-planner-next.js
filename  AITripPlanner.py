@@ -106,12 +106,12 @@ def generate_trip_images(destination):
     images = [img['url'] for img in response.data]
     return images
 
-def display_options(hotels):
-    for idx, hotel in enumerate(hotels):
-        print(f"Option {idx + 1}: {hotel['destination']} - {hotel['hotel']} - ${hotel['price']}")
+def display_options(hotels, destinations):
+    for idx, destination in enumerate(destinations):
+        print(f"Option {idx + 1}: {hotels[destination]} - {hotels[destination]['name']} - ${hotels[destination]['price']}")
 
     choice = int(input("Choose a destination (1-5): ")) - 1
-    return hotels[choice]
+    return hotels[destinations[choice]]
 
 def print_flights_state(going_flights_info, returning_flights_info, serapi_tries):
     print('-'*50)
@@ -128,7 +128,8 @@ def print_flights_state(going_flights_info, returning_flights_info, serapi_tries
     print('*'*50)
 
 def main():
-    start_date, end_date, budget, trip_type = get_trip_details()
+    # start_date, end_date, budget, trip_type = get_trip_details()
+    start_date, end_date, budget, trip_type = '2024-08-01', '2024-08-10', 1000, 'city'
     serapi_tries = 0
     number_of_missing_destinations = 5
     possible_destinations = []
@@ -136,7 +137,7 @@ def main():
     going_flights_info = []
     returning_flights_info = []
     # crate list of size 5 of duplicated budget values
-    budget = [budget] * 5
+    budgets = [budget] * 5
     print("buget", budget)
     while number_of_missing_destinations > 0 and serapi_tries < 1:
 
@@ -144,10 +145,10 @@ def main():
         print("chosen_cities", chosen_cities)
         print('.'*50)
 
-        possible_destinations = get_possible_destinations(start_date, end_date, trip_type, number_of_missing_destinations, chosen_cities)
-        cities, destinations, airport_codes = parse_destinations(possible_destinations)
-
-        # added_going_flights_info, added_returning_flights_info, chosen_cities, successful_retrieved_flights, budget = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budget)
+        # possible_destinations = get_possible_destinations(start_date, end_date, trip_type, number_of_missing_destinations, chosen_cities)
+        # cities, destinations, airport_codes = parse_destinations(possible_destinations)
+        
+        # added_going_flights_info, added_returning_flights_info, chosen_cities, successful_retrieved_flights, budgets = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budgets)
         # going_flights_info.append(added_going_flights_info)
         # returning_flights_info.append(added_returning_flights_info)
         # print_flights_state(going_flights_info, returning_flights_info, serapi_tries)
@@ -156,15 +157,20 @@ def main():
         serapi_tries += 1
 
     print("finished getting flights") 
-
-    hotels = HotelSearcher.get_hotel_in_budget(destinations, budget, start_date, end_date)
-    print("hotels", hotels)
+   
+    # hotels = HotelSearcher.get_hotels_in_budget(destinations, budgets, start_date, end_date)
     
-    if not hotels:
-        print("No suitable hotels found within the budget.")
-        return
+    # if not hotels:
+    #     print("No suitable hotels found within the budget.")
+    #     return
+    # print("budgets before subtraction", budgets)
+    # for index, destination in enumerate(destinations):
+    #     budgets[index] -= hotels[destination]['price']
+    # print("budgets after subtraction", budgets)
 
-    # chosen_option = display_options(hotels)
+    print("finished getting hotels")
+
+    chosen_option = display_options(hotels, destinations)
     # trip_plan = create_daily_plan(chosen_option['destination'], start_date, end_date)
     # trip_images = generate_trip_images(chosen_option['destination'])
 

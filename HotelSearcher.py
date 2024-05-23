@@ -15,37 +15,45 @@ SERPAPI_API_KEY = os.getenv('SERPAPI_API_KEY')
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-def get_most_expensive_hotel(data):
+def get_most_expensive_hotel(data, budget):
+    properties = data['properties']
+
+    if not properties:
+        return None
+
+    print("properties", properties[0])
     chosen_hotel_data = {}
-    name = ''
-    max_price = data['properties'][0]['total_rate']['extracted_lowest']
-        
-    for property in data['properties']:
-        if 'total_rate' in property and 'extracted_lowest' in property['total_rate']:
+    name = properties[0]['name'] # data['properties'][0]['name']
+    current_max_price =  0 # data['properties'][0]['total_rate']['extracted_lowest']
+    limited_price = budget
+    image_url = properties[0]['images'][0]
+    
+    print("*"*50)
+    # print("properties", data['properties'])
+    print("properties", properties)
+    print("*"*50)
+    
+    for property in properties:
+        print("property", property)
+        if ('total_rate' in property) and ('extracted_lowest' in property['total_rate']):
+            print("property['total_rate']['extracted_lowest']", property['total_rate']['extracted_lowest'])
             price = property['total_rate']['extracted_lowest']
-            if price > max_price:
-                print("price", price, "max_price", max_price)
-                max_price = price
+            if price > current_max_price and price <= limited_price:
+                print("price", price, "max_price", current_max_price)
+                current_max_price = price
                 name = property['name']
-                check_in_time = property['check_in_time']
-                check_out_time = property['check_out_time'] 
                 image_url = property['images'][0]
-                overall_rating = property['overall_rating']
     
     chosen_hotel_data['name'] = name
-    chosen_hotel_data['price'] = max_price
-    chosen_hotel_data['check_in_time'] = check_in_time
-    chosen_hotel_data['check_out_time'] = check_out_time
+    chosen_hotel_data['price'] = current_max_price
     chosen_hotel_data['image_url'] = image_url
-    chosen_hotel_data['overall_rating'] = overall_rating
-
-
+    
     print(name)
 
     return chosen_hotel_data
 
-def get_hotel_in_budget(destinations, budget, start_date, end_date):
-    hotels = []
+def get_hotels_in_budget(destinations, budgets, start_date, end_date):
+    hotels = {}
     for index, destination in enumerate(destinations):
         params = {
         "engine": "google_hotels",
@@ -56,18 +64,19 @@ def get_hotel_in_budget(destinations, budget, start_date, end_date):
         "currency": "USD",
         "gl": "us",
         "hl": "en",
-        "max_price": budget[index],
+        "max_price": budgets[index],
         "api_key": SERPAPI_API_KEY,
         }
 
         search = GoogleSearch(params)
         results = search.get_dict()
         
-        print("results", json.dumps(results, indent=4))
-        # retrieve the hotel with the maximum price that is within the budget[index]
-        chosen_hotel_data = get_most_expensive_hotel(results)
-        if chosen_hotel_data and chosen_hotel_data['price'] < budget[index]:
-            hotels[chosen_hotel_data['name']] = chosen_hotel_data
-        break
-
+        chosen_hotel_data = get_most_expensive_hotel(results, budgets[index])
+        print("&"*50)
+        print("chosen_hotel_data", chosen_hotel_data, "budgets[index]", budgets[index])
+        print("&"*50)
+        if chosen_hotel_data is not None:
+            print("inside the data")
+            hotels[destination] = chosen_hotel_data
+       
     return hotels
