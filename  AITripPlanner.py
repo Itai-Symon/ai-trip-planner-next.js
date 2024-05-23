@@ -160,12 +160,14 @@ def main():
 
     chosen_option = display_options(hotels, destinations)
     print("chosen_option", chosen_option)
+
     trip_plan = ChatGPTFetcher.create_daily_plan(chosen_option['destination'], start_date, end_date, trip_type)
-    print("trip_plan", trip_plan)
     parsed_plan = parse_trip_plan(trip_plan)
     print("parsed_plan", parsed_plan)
-    # trip_images = generate_trip_images(chosen_option['destination'])
 
+    trip_images = ChatGPTFetcher.generate_trip_images(chosen_option['destination'], trip_type)
+    print("trip_images", trip_images)
+    
     # print("\nTrip Summary:")
     # print(f"Destination: {chosen_option['destination']}")
     # print(f"Hotel: {chosen_option['hotel']}")

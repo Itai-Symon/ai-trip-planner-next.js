@@ -73,10 +73,24 @@ def create_daily_plan(destination, start_date, end_date, trip_type):
     plan = response.choices[0].message.content.strip()
     return plan
 
-def generate_trip_images(destination):
-    prompt = f"Generate 4 images showing a {destination} trip."
-    response = client.images.generate(model="dall-e",
-    prompt=prompt,
-    n=4)
-    images = [img['url'] for img in response.data]
-    return images
+def generate_trip_images(destination, trip_type):
+    image_descriptions = [ "A popular tourist attraction or landmark.", "A scenic outdoor activity or natural landscape.", "A local restaurant or cuisine typical of the area.", "A cultural or special event happening in the area." ]
+    image_urls = []
+    for index in range(4):
+        prompt = (
+            f"Generate a high-quality image that represent a {trip_type} trip to {destination}. "
+            f"Generte {image_descriptions[index]}\n"
+            f"Ensure the image is visually appealing and accurately represent the destination."
+        )
+        
+        response = client.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            size="1024x1024",
+            quality="standard",
+            n=1
+        )
+        image_urls.append(response.data[0].url)
+    
+    return image_urls
+
