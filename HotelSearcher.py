@@ -1,9 +1,7 @@
 from openai import OpenAI
 from serpapi import GoogleSearch
-import airportsdata
 from dotenv import load_dotenv
 import os
-import json
 
 
 # Load environment variables from .env file

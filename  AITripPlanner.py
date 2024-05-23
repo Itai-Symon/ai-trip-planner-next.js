@@ -1,3 +1,4 @@
+import re
 from openai import OpenAI
 from serpapi import GoogleSearch
 import requests
@@ -7,6 +8,7 @@ from dotenv import load_dotenv
 import os
 import FlightSearcher
 import HotelSearcher
+import ChatGPTFetcher
 
 # Load environment variables from .env file
 load_dotenv()
@@ -17,7 +19,6 @@ SERPAPI_API_KEY = os.getenv('SERPAPI_API_KEY')
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-
 def get_trip_details():
     start_date = input("Enter the start date of your trip (YYYY-MM-DD): ")
     end_date = input("Enter the end date of your trip (YYYY-MM-DD): ")
@@ -25,34 +26,6 @@ def get_trip_details():
     trip_type = input("Enter the type of trip (ski/beach/city): ")
 
     return start_date, end_date, budget, trip_type
-
-def get_possible_destinations(start_date, end_date, trip_type, numeber_of_destinations=5, chosen_cities=[]):
-    prompt = (
-        f"Suggest {numeber_of_destinations} possible places in the world for a {trip_type} trip "
-        f"from {start_date} to {end_date}. Consider the season, weather, and activities "
-        f"suitable for this type of trip during this time."
-    )
-    
-    if chosen_cities is not None and len(chosen_cities) > 0:
-        prompt += f" Exclude the following cities: {', '.join(chosen_cities)}."
-        
-    prompt += (
-        f" For each destination, provide the closest city with an airport and the airport code."
-        f" Respond only with the city and destination names and airport code in the following format: "
-        f"[index]. City: [city name], Destination: [destination name], Airport: [airport code]."
-    )
-    
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a travel assistant."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    print("prompt", prompt)
-    destinations = response.choices[0].message.content
-    print(destinations)
-    return destinations
 
 def parse_destinations(possible_destinations):
     # Split the response by newline character to get individual lines
@@ -88,23 +61,38 @@ def parse_destinations(possible_destinations):
 
     return cities, destinations, airports
 
-def create_daily_plan(destination, start_date, end_date):
-    prompt = f"Create a daily plan for a trip to {destination} from {start_date} to {end_date}."
-    response = client.chat.completions.create(model="gpt-3.5-turbo",
-    messages=[
-        {"role": "system", "content": "You are a travel assistant."},
-        {"role": "user", "content": prompt}
-    ])
-    plan = response.choices[0].message.content.strip()
-    return plan
+def parse_trip_plan(trip_plan):
+    # Split the trip plan into individual days
+    days = trip_plan.strip().split('\n\n')
+    parsed_plan = []
 
-def generate_trip_images(destination):
-    prompt = f"Generate 4 images showing a {destination} trip."
-    response = client.images.generate(model="dall-e",
-    prompt=prompt,
-    n=4)
-    images = [img['url'] for img in response.data]
-    return images
+    try:
+        # Regular expression to match the day, date, and activities
+        day_pattern = re.compile(r'Day (\d+|Last Day) \((\d{4}-\d{2}-\d{2})\):')
+        activity_pattern = re.compile(r'- (Morning|Afternoon|Evening): (.+)')
+
+        for day in days:
+            lines = day.strip().split('\n')
+            day_info = {}
+            
+            day_match = day_pattern.match(lines[0])
+            if day_match:
+                day_info['day'] = 'Last Day' if day_match.group(1) == 'Last Day' else int(day_match.group(1))
+                day_info['date'] = day_match.group(2)
+                day_info['activities'] = {'Morning': '', 'Afternoon': '', 'Evening': ''}
+            
+            for line in lines[1:]:
+                activity_match = activity_pattern.match(line.strip())
+                if activity_match:
+                    period = activity_match.group(1)
+                    activity = activity_match.group(2)
+                    day_info['activities'][period] = activity
+
+            parsed_plan.append(day_info)
+
+    except Exception as e:
+        print("Error parsing the trip plan:", e)
+    return parsed_plan
 
 def display_options(hotels, destinations):
     for idx, destination in enumerate(destinations):
@@ -142,7 +130,7 @@ def main():
     budgets = [budget] * 5
    
     while number_of_missing_destinations > 0 and serapi_tries < 1:
-        # possible_destinations = get_possible_destinations(start_date, end_date, trip_type, number_of_missing_destinations, chosen_cities)
+        # possible_destinations = ChatGPTFetcher.get_possible_destinations(start_date, end_date, trip_type, number_of_missing_destinations, chosen_cities)
         # cities, destinations, airport_codes = parse_destinations(possible_destinations)
         
         # added_going_flights_info, added_returning_flights_info, chosen_cities, successful_retrieved_flights, budgets = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budgets)
@@ -172,7 +160,10 @@ def main():
 
     chosen_option = display_options(hotels, destinations)
     print("chosen_option", chosen_option)
-    trip_plan = create_daily_plan(chosen_option['destination'], start_date, end_date)
+    trip_plan = ChatGPTFetcher.create_daily_plan(chosen_option['destination'], start_date, end_date, trip_type)
+    print("trip_plan", trip_plan)
+    parsed_plan = parse_trip_plan(trip_plan)
+    print("parsed_plan", parsed_plan)
     # trip_images = generate_trip_images(chosen_option['destination'])
 
     # print("\nTrip Summary:")
