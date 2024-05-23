@@ -130,21 +130,16 @@ def print_flights_state(going_flights_info, returning_flights_info, serapi_tries
 def main():
     # start_date, end_date, budget, trip_type = get_trip_details()
     start_date, end_date, budget, trip_type = '2024-08-01', '2024-08-10', 1000, 'city'
+    
     serapi_tries = 0
     number_of_missing_destinations = 5
     possible_destinations = []
     chosen_cities = []
     going_flights_info = []
     returning_flights_info = []
-    # crate list of size 5 of duplicated budget values
     budgets = [budget] * 5
-    print("buget", budget)
+   
     while number_of_missing_destinations > 0 and serapi_tries < 1:
-
-        print('.'*50)
-        print("chosen_cities", chosen_cities)
-        print('.'*50)
-
         # possible_destinations = get_possible_destinations(start_date, end_date, trip_type, number_of_missing_destinations, chosen_cities)
         # cities, destinations, airport_codes = parse_destinations(possible_destinations)
         
@@ -170,7 +165,11 @@ def main():
 
     print("finished getting hotels")
 
+    hotels = {'Iceland': {'name': 'Syðstibær Guesthouse - Double Room', 'price': 780, 'image_url': {'thumbnail': 'https://lh6.googleusercontent.com/proxy/25jsSNNJgs8-K7mhDH-Xy8sVflMwXvgQGnpZBL8Foa6eyFKD_KaIbjFRpMcgg6eSqtU2iCDqfozszHw9QmGKHO5j5OG9csGFfmAiMY2SgEruOnBUZwwU0NP3wL9OjuT4cDyc-evUQVOetmNpjlc00MS_kmLvtQ=s287-w287-h192-n-k-no-v1', 'original_image': 'https://q-xx.bstatic.com/xdata/images/hotel/max1024x768/309852219.jpg?k=c407f72fb1277ae1b5e64903faf08f380ba6f9c6eee9b4be7a328bda4502c442&o='}}, 'Netherlands': {'name': 'Trendy Tiny Houses Bovenweg', 'price': 977, 'image_url': {'thumbnail': 'https://lh5.googleusercontent.com/proxy/JFPUmM4Armxz0z9cp7SQfx7b8ncEmqq31r35PqW7HnsdBUGnNKpLpZhpsZFNhBgOZhIv_JTeiWkfrA02U5MKONss5-rcjdNE0kMAQNlb-6lTgzqfQdPHCHa_057i6eICyY9I354Ir8HsQe2-lF21Jz_8sSu1Iw=s287-w287-h192-n-k-no-v1', 'original_image': 'https://q-xx.bstatic.com/xdata/images/hotel/max1440x1080/208218765.jpg?k=d9cfd024a1a5e24831d4c0511fc365d93e98da3e2b8cfe3fb1ebc12981e95370&o='}}, 'Japan': {'name': "Hotel M's Plus Shijo Omiya", 'price': 474, 'image_url': {'thumbnail': 'https://lh6.googleusercontent.com/proxy/nqwH8kQm7R0G3YMN_z5wcauiK7278bvEXk2QSXm3FtgNml7vbtOCq3e_EDHNfSXmPvo3xxSrR-i5xWZ1k7pQe_RP5YX4quxLFV2vzcmPSA7vJFs2cdgtAFrvaEzdAZj-DT05Hexd56Lw7jiMp6L021Y7qTiomA=s287-w287-h192-n-k-no-v1', 'original_image': 'https://photos.hotelbeds.com/giata/original/63/637861/637861a_hb_a_003.jpg'}}, 'Canada': {'name': 'Pangea Pod Hotel', 'price': 875, 'image_url': {'thumbnail': 'https://lh5.googleusercontent.com/p/AF1QipNikPcbU7oLm4Yc7P-9QlC71pJ7Z_9AXIsDYx52=s287-w287-h192-n-k-no-v1', 'original_image': 'https://lh5.googleusercontent.com/p/AF1QipNikPcbU7oLm4Yc7P-9QlC71pJ7Z_9AXIsDYx52=s10000'}}, 'Spain': {'name': 'Beachfront studio apartment', 'price': 817, 'image_url': {'thumbnail': 'https://lh6.googleusercontent.com/proxy/Jy37xmRXalmXfsWbqx2-zqkf-5kpKD79rcmuJQm55lO7QkWPhAPLuHbiZpixY8MyUt2JSzoPiuECNQjddcIpPcmgXuI_KEnIiUXPIuKJ6iftrTx4ueyw96i4ZYSyYFM4NIbhs_1QldgBeeF-C4RF4xBcAwzFrg=s287-w287-h192-n-k-no-v1', 'original_image': 'https://media-cdn.tripadvisor.com/media/vr-splice-j/00/d5/ae/6e.jpg'}}}
+    destinations = ['Iceland', 'Netherlands', 'Japan', 'Canada', 'Spain']
+
     chosen_option = display_options(hotels, destinations)
+    
     # trip_plan = create_daily_plan(chosen_option['destination'], start_date, end_date)
     # trip_images = generate_trip_images(chosen_option['destination'])
 
