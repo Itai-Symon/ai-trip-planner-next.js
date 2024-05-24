@@ -1,5 +1,4 @@
 from openai import OpenAI
-from serpapi import GoogleSearch
 from dotenv import load_dotenv
 import os
 
