@@ -107,54 +107,86 @@ def display_options(hotels, destinations):
     return chosen_option
 
 def print_flights_state(going_flights_info, returning_flights_info, serapi_tries):
-    print('-'*50)
-    print("going flight information, amount:", len(going_flights_info))
-    print(going_flights_info)
-    print('#'*50)
-    print("returning flight information, amount:", len(returning_flights_info))
-    print(returning_flights_info)
-    print('-'*50)
+    print('-' * 50)
 
-    print('*'*50)
-    print("missing destinations:", 5 - len(going_flights_info))
-    print("try number:", serapi_tries)
-    print('*'*50)
+    # Extract sublists for going and returning flight information
+    going_info = going_flights_info[0]
+    returning_info = returning_flights_info[0]
+
+    # Print going flight information
+    print("Going flight information, amount:", len(going_info))
+    print(going_flights_info)
+
+    print('#' * 50)
+
+    # Print returning flight information
+    print("Returning flight information, amount:", len(returning_info))
+    print(returning_flights_info)
+
+    print('-' * 50)
+
+    # Print missing destinations and try number
+    print('*' * 50)
+    print("Missing destinations:", 5 - len(going_info))
+    print("Try number:", serapi_tries)
+    print('*' * 50)
+
 
 def main():
     # start_date, end_date, budget, trip_type = get_trip_details()
     start_date, end_date, budget, trip_type = '2024-08-01', '2024-08-10', 1000, 'city'
     
-    serapi_tries = 0
-    number_of_missing_destinations = 5
     possible_destinations = []
-    chosen_cities = []
+    budgets = [budget] * 5
+
     going_flights_info = []
     returning_flights_info = []
-    budgets = [budget] * 5
+    destinations_with_flights = []
+    
+    # allowing multiple tries to get the flights
+    serapi_tries = 0
+    number_of_missing_destinations = 5
+    chosen_cities = []
    
     while number_of_missing_destinations > 0 and serapi_tries < 1:
         # possible_destinations = ChatGPTFetcher.get_possible_destinations(start_date, end_date, trip_type, number_of_missing_destinations, chosen_cities)
         # cities, destinations, airport_codes = parse_destinations(possible_destinations)
         
-        # added_going_flights_info, added_returning_flights_info, chosen_cities, successful_retrieved_flights, budgets = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budgets)
+        # added_going_flights_info, added_returning_flights_info, chosen_cities, flight_prices, destinations_with_flights = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budgets, destinations)
         # going_flights_info.append(added_going_flights_info)
         # returning_flights_info.append(added_returning_flights_info)
-        # print_flights_state(going_flights_info, returning_flights_info, serapi_tries)
-        # number_of_missing_destinations -= successful_retrieved_flights
+
+        going_flights_info = [[{'Reykjavik': {'price': 834, 'departure_token': 'WyJDalJJVnpoVlNVVkNURFV3UVVGQlJGaHNkRUZDUnkwdExTMHRMUzB0YjNsaVpIVXhNa0ZCUVVGQlIxcFJWMEpWU1dSWlkwRkJFaE5CUmprMk0zeEJSakV5TkRCOFNGWTJPRGcxR2dzSXlJc0ZFQUlhQTFWVFJEZ2NjTWlMQlE9PSIsW1siVExWIiwiMjAyNC0wOC0wMSIsIkNERyIsbnVsbCwiQUYiLCI5NjMiXSxbIkNERyIsIjIwMjQtMDgtMDIiLCJBTVMiLG51bGwsIkFGIiwiMTI0MCJdLFsiQU1TIiwiMjAyNC0wOC0wMiIsIktFRiIsbnVsbCwiSFYiLCI2ODg1Il1dXQ==', 'flights': {'AF 963': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-08-01 16:30', 'arrival_airport_name': 'Paris Charles de Gaulle Airport', 'arrival_time': '2024-08-01 20:15', 'duration': 285, 'airline': 'Air France', 'flight_number': 'AF 963'}, 'AF 1240': {'departure_airport_name': 'Paris Charles de Gaulle Airport', 'departure_time': '2024-08-02 07:10', 'arrival_airport_name': 'Amsterdam Airport Schiphol', 'arrival_time': '2024-08-02 08:35', 'duration': 85, 'airline': 'Air France', 'flight_number': 'AF 1240'}, 'HV 6885': {'departure_airport_name': 'Amsterdam Airport Schiphol', 'departure_time': '2024-08-02 17:55', 'arrival_airport_name': 'Keflavík International Airport', 'arrival_time': '2024-08-02 19:05', 'duration': 190, 'airline': 'Transavia', 'flight_number': 'HV 6885'}}}}, {'Barcelona': {'price': 347, 'departure_token': 'WyJDalJJZURCTlEyUlVRbGc0VjFsQlJFZENaMEZDUnkwdExTMHRMUzB0TFc5NVltTm9NMEZCUVVGQlIxcFJWRXBKUTNSemFFTkJFZzFKTWpNNU9ERjhTVUl6TURBeUdnc0lqSThDRUFJYUExVlRSRGdjY0l5UEFnPT0iLFtbIlRMViIsIjIwMjQtMDgtMDEiLCJNQUQiLG51bGwsIkkyIiwiMzk4MSJdLFsiTUFEIiwiMjAyNC0wOC0wMiIsIkJDTiIsbnVsbCwiSUIiLCIzMDAyIl1dXQ==', 'flights': {'I2 3981': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-08-01 18:35', 'arrival_airport_name': 'Adolfo Suárez Madrid–Barajas Airport', 'arrival_time': '2024-08-01 23:00', 'duration': 325, 'airline': 'Iberia Express', 'flight_number': 'I2 3981'}, 'IB 3002': {'departure_airport_name': 'Adolfo Suárez Madrid–Barajas Airport', 'departure_time': '2024-08-02 06:45', 'arrival_airport_name': 'Josep Tarradellas Barcelona-El Prat Airport', 'arrival_time': '2024-08-02 08:00', 'duration': 75, 'airline': 'Iberia', 'flight_number': 'IB 3002'}}}}]]
+        returning_flights_info = [[{'Reykjavik': {'flights': {'BT 170': {'departure_airport_name': 'Keflavík International Airport', 'departure_time': '2024-08-10 12:30', 'arrival_airport_name': 'Riga Airport', 'arrival_time': '2024-08-10 19:05', 'duration': 215, 'airline': 'Air Baltic', 'flight_number': 'BT 170'}, 'BT 771': {'departure_airport_name': 'Riga Airport', 'departure_time': '2024-08-10 23:25', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-11 03:50', 'duration': 265, 'airline': 'Air Baltic', 'flight_number': 'BT 771'}}}}, {'Barcelona': {'flights': {'VY 7844': {'departure_airport_name': 'Josep Tarradellas Barcelona-El Prat Airport', 'departure_time': '2024-08-10 18:25', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-10 23:40', 'duration': 255, 'airline': 'Vueling', 'flight_number': 'VY 7844'}}}}]]
+        destinations_with_flights = ['Iceland', 'Spain']
+        print_flights_state(going_flights_info, returning_flights_info, serapi_tries)
+        number_of_missing_destinations -= len(going_flights_info[0])
 
         serapi_tries += 1
+        flight_prices = [834, 347, 0, 0, 0]
+    
+    
+    new_budgets = []
+    for index, price in enumerate(flight_prices):
+        if price != 0:
+            new_budgets.append(budgets[index] - price)
 
+    budgets = new_budgets
+    destinations = destinations_with_flights
+    
+    print("budgets", budgets)
+    print("destinations_with_flights", destinations)
     print("finished getting flights") 
    
-    # hotels = HotelSearcher.get_hotels_in_budget(destinations, budgets, start_date, end_date)
+    hotels = HotelSearcher.get_hotels_in_budget(destinations, budgets, start_date, end_date)
     
-    # if not hotels:
-    #     print("No suitable hotels found within the budget.")
-    #     return
-    # print("budgets before subtraction", budgets)
-    # for index, destination in enumerate(destinations):
-    #     budgets[index] -= hotels[destination]['price']
-    # print("budgets after subtraction", budgets)
+    if not hotels:
+        print("No suitable hotels found within the budget.")
+        return
+    print("budgets before subtraction", budgets)
+    for index, destination in enumerate(destinations):
+        budgets[index] -= hotels[destination]['price']
+    print("budgets after subtraction", budgets)
 
     print("finished getting hotels")
 
@@ -168,18 +200,18 @@ def main():
     parsed_plan = parse_trip_plan(trip_plan)
     print("parsed_plan", parsed_plan)
 
-    # trip_images = ChatGPTFetcher.generate_trip_images(chosen_option['destination'], trip_type)
-    # print("trip_images", trip_images)
+    trip_images = ChatGPTFetcher.generate_trip_images(chosen_option['destination'], trip_type)
+    print("trip_images", trip_images)
 
     print("\nTrip Summary:")
     print(f"Destination: {chosen_option['destination']}")
     print(f"Hotel: {chosen_option['name']}")
     print(f"Hotel image: {chosen_option['image_url']['original_image']}")
     print(f"Total Cost: ${chosen_option['price']}")
-    # print(f"Trip Plan:\n{trip_plan}")
-    # print("\nTrip Images:")
-    # for idx, img_url in enumerate(trip_images):
-    #     print(f"Image {idx + 1}: {img_url}")
+    print(f"Trip Plan:\n{trip_plan}")
+    print("\nTrip Images:")
+    for idx, img_url in enumerate(trip_images):
+        print(f"Image {idx + 1}: {img_url}")
 
 if __name__ == "__main__":
     main()

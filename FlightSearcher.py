@@ -1,6 +1,5 @@
 from openai import OpenAI
 from serpapi import GoogleSearch
-import airportsdata
 from dotenv import load_dotenv
 import os
 
@@ -13,7 +12,6 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 SERPAPI_API_KEY = os.getenv('SERPAPI_API_KEY')
 
 client = OpenAI(api_key=OPENAI_API_KEY)
-
 
 def get_cheapest_flight(flight_result, budget = 0, city = ''):
     
@@ -87,19 +85,22 @@ def get_return_flight(departure_token, params, city):
             }
     return flights_info
 
-def get_flights(cities, airport_codes, start_date, end_date, budget):
+def get_flights(cities, airport_codes, start_date, end_date, budget, destinations):
     flights = []
     return_flights = []
-    successfully_retrieved_flights = 0
+    flight_prices = [0, 0, 0, 0, 0]
+    
     # validations
     if len(cities) != len(airport_codes):
         print("The number of cities and airport codes should be the same.")
         return flights, return_flights, []
 
+    chosen_cities = []
+    chosen_destinations = []
+    
     # each destination is a name
     for index, city in enumerate(cities):
         print(f"Searching for flights to {city}...")
-        chosen_cities = []
 
         params = {
             "engine": "google_flights",
@@ -121,7 +122,7 @@ def get_flights(cities, airport_codes, start_date, end_date, budget):
             print(f"Error: {flight_result['error']}")
             continue
 
-        cheapest_flight, budget[index] = get_cheapest_flight(flight_result, budget[index], city)
+        cheapest_flight, flight_prices[index] = get_cheapest_flight(flight_result, budget[index], city)
     
         if cheapest_flight is None:
             print(f"No flights found for {city}.")
@@ -134,7 +135,13 @@ def get_flights(cities, airport_codes, start_date, end_date, budget):
                 flights.append(cheapest_flight)
                 return_flights.append(return_flight)
                 chosen_cities.append(city)
-                successfully_retrieved_flights += 1
+                print("-"*50)
+                print(f"Chosen destination: {destinations[index]}") 
+                print("-"*50)
+                chosen_destinations.append(destinations[index])
+                print("-"*50)
+                print("chosen_destinations", chosen_destinations)
+                print("-"*50)
     
     print('='*50)
     print("flights", flights)
@@ -143,6 +150,10 @@ def get_flights(cities, airport_codes, start_date, end_date, budget):
     print('*'*50)
     print("chosen_cities", chosen_cities)
     print('='*50)
+    print("flight_prices", flight_prices)
+    print('='*50)
+    print("chosen_destinations", chosen_destinations)
+    print('='*50)
 
-    return flights, return_flights, chosen_cities, successfully_retrieved_flights, budget
+    return flights, return_flights, chosen_cities, flight_prices, chosen_destinations
 
