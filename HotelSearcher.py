@@ -14,6 +14,7 @@ SERPAPI_API_KEY = os.getenv('SERPAPI_API_KEY')
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 def get_most_expensive_hotel(data, budget):
+    print("data", data)
     properties = data['properties']
 
     if not properties:
@@ -21,18 +22,17 @@ def get_most_expensive_hotel(data, budget):
 
     print("properties", properties[0])
     chosen_hotel_data = {}
-    name = properties[0]['name'] # data['properties'][0]['name']
-    current_max_price =  0 # data['properties'][0]['total_rate']['extracted_lowest']
+    name = properties[0]['name'] 
+    current_max_price =  0 
     limited_price = budget
     image_url = properties[0]['images'][0]
     
-    print("*"*50)
-    # print("properties", data['properties'])
-    print("properties", properties)
-    print("*"*50)
+    # print("*"*50)
+    # print("properties", properties)
+    # print("*"*50)
     
     for property in properties:
-        print("property", property)
+        # print("property", property)
         if ('total_rate' in property) and ('extracted_lowest' in property['total_rate']):
             print("property['total_rate']['extracted_lowest']", property['total_rate']['extracted_lowest'])
             price = property['total_rate']['extracted_lowest']
@@ -68,7 +68,7 @@ def get_hotels_in_budget(destinations, budgets, start_date, end_date):
 
         search = GoogleSearch(params)
         results = search.get_dict()
-        
+        print("results", results)
         chosen_hotel_data = get_most_expensive_hotel(results, budgets[index])
         print("&"*50)
         print("chosen_hotel_data", chosen_hotel_data, "budgets[index]", budgets[index])
