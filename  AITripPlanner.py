@@ -1,27 +1,25 @@
 import re
 from openai import OpenAI
-# from dotenv import load_dotenv
-# import os
-# import FlightSearcher
-# import HotelSearcher
-# import ChatGPTFetcher
-from serpapi import GoogleSearch
-from fastapi import FastAPI
+from dotenv import load_dotenv
+import os
+import FlightSearcher
+import HotelSearcher
+import ChatGPTFetcher
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional, List, Dict, Any
 
 app = FastAPI()
-# from typing import Optional
+
 
 # Load environment variables from .env file
-# load_dotenv()
+load_dotenv()
 
 # Retrieve the API key from the environment variables
-OPENAI_API_KEY = 'sk-proj-yrEmjYbIFZ6gL86hSnATT3BlbkFJhfrAhqAPT4jZOFQ43UoO'
-SERPAPI_API_KEY = 'd1c49ffa35ff5e629a81bb1365e6b6e13b62912262e12f0d067a656dd3a7d202'
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+SERPAPI_API_KEY = os.getenv('SERPAPI_API_KEY')
 
 client = OpenAI(api_key=OPENAI_API_KEY)
-
-
 
 # Allow requests from the Next.js frontend origin
 app.add_middleware(
@@ -32,315 +30,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-
-
-# ChatGPT
-def get_possible_destinations(start_date, end_date, trip_type, numeber_of_destinations=5, chosen_cities=[]):
-    prompt = (
-        f"Suggest {numeber_of_destinations} possible places in the world for a {trip_type} trip "
-        f"from {start_date} to {end_date}. Consider the season, weather, and activities "
-        f"suitable for this type of trip during this time."
-    )
-    
-    if chosen_cities is not None and len(chosen_cities) > 0:
-        prompt += f" Exclude the following cities: {', '.join(chosen_cities)}."
-        
-    prompt += (
-        f" For each destination, provide the closest city with an airport and the airport code."
-        f" Respond only with the city and destination names and airport code in the following format: "
-        f"[index]. City: [city name], Destination: [destination name], Airport: [airport code]."
-    )
-    
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a travel assistant."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    print("prompt", prompt)
-    destinations = response.choices[0].message.content
-    print(destinations)
-    return destinations
-
-def create_daily_plan(destination, start_date, end_date, trip_type):
-    prompt = (
-        f"Create a daily plan for a {trip_type} trip to {destination} from {start_date} to {end_date}. "
-        f"Consider the month of the trip and the local climate. Include a mix of activities that fit the trip type, "
-        f"recommend places to eat for breakfast, lunch, and dinner, must-see attractions, and any special events happening during the trip dates. "
-        f"Only provide an itinerary for each day of the trip in the following format:\n"
-        f"Day X (YYYY-MM-DD):\n"
-        f"- Morning: [Morning activities and places to eat breakfast]\n"
-        f"- Afternoon: [Afternoon activities and places to eat lunch]\n"
-        f"- Evening: [Evening activities and places to eat dinner]\n"
-        f"- Attractions: [List of must-see attractions for the day]\n"
-        f"- Special Events: [Any special events happening on that day]\n"
-        f"Example:\n"
-        f"Day 1 (2024-08-01):\n"
-        f"- Morning: Arrival in Vancouver, check into your hotel and freshen up. Breakfast at Cafe Medina.\n"
-        f"- Afternoon: Explore Stanley Park, visit the Vancouver Aquarium. Lunch at Stanley's Bar and Grill.\n"
-        f"- Evening: Dinner at Miku Vancouver for delicious sushi. Stroll along the Vancouver Seawall.\n"
-        f"- Attractions: Stanley Park, Vancouver Aquarium, Vancouver Seawall.\n"
-        f"- Special Events: Summer Night Market.\n"
-        f"Repeat this format for each day from {start_date} to {end_date}, ensuring that each day's plan is detailed and tailored to the specified trip type."
-    )
-    
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a travel assistant. You are helping a user plan a trip with a detailed itinerary for each day."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-    plan = response.choices[0].message.content.strip()
-    return plan
-
-def generate_trip_images(destination, trip_type):
-    image_descriptions = [ "A popular tourist attraction or landmark.", "A scenic outdoor activity or natural landscape.", "A local restaurant or cuisine typical of the area.", "A cultural or special event happening in the area." ]
-    image_urls = []
-    for index in range(4):
-        prompt = (
-            f"Generate a high-quality image that represent a {trip_type} trip to {destination}. "
-            f"Generte {image_descriptions[index]}\n"
-            f"Ensure the image is visually appealing and accurately represent the destination."
-        )
-        
-        response = client.images.generate(
-            model="dall-e-3",
-            prompt=prompt,
-            size="1024x1024",
-            quality="standard",
-            n=1
-        )
-        image_urls.append(response.data[0].url)
-    
-    return image_urls
-
-
-# HotelSearcher
-def get_most_expensive_hotel(data, budget):
-    print("data", data)
-    properties = data['properties']
-
-    if not properties:
-        return None
-
-    print("properties", properties[0])
-    chosen_hotel_data = {}
-    name = properties[0]['name'] 
-    current_max_price =  0 
-    limited_price = budget
-    image_url = properties[0]['images'][0]
-    
-    # print("*"*50)
-    # print("properties", properties)
-    # print("*"*50)
-    
-    for property in properties:
-        # print("property", property)
-        if ('total_rate' in property) and ('extracted_lowest' in property['total_rate']):
-            print("property['total_rate']['extracted_lowest']", property['total_rate']['extracted_lowest'])
-            price = property['total_rate']['extracted_lowest']
-            if price > current_max_price and price <= limited_price:
-                print("price", price, "max_price", current_max_price)
-                current_max_price = price
-                name = property['name']
-                image_url = property['images'][0]
-    
-    chosen_hotel_data['name'] = name
-    chosen_hotel_data['price'] = current_max_price
-    chosen_hotel_data['image_url'] = image_url
-    
-    print(name)
-
-    return chosen_hotel_data
-
-def get_hotels_in_budget(destinations, budgets, start_date, end_date):
-    hotels = {}
-    for index, destination in enumerate(destinations):
-        params = {
-        "engine": "google_hotels",
-        "q": f"hotels in {destination}",
-        "check_in_date": start_date,
-        "check_out_date": end_date,
-        "adults": "1",
-        "currency": "USD",
-        "gl": "us",
-        "hl": "en",
-        "max_price": budgets[index],
-        "api_key": SERPAPI_API_KEY,
-        }
-
-        search = GoogleSearch(params)
-        results = search.get_dict()
-        print("results", results)
-        chosen_hotel_data = get_most_expensive_hotel(results, budgets[index])
-        print("&"*50)
-        print("chosen_hotel_data", chosen_hotel_data, "budgets[index]", budgets[index])
-        print("&"*50)
-        if chosen_hotel_data is not None:
-            print("inside the data")
-            hotels[destination] = chosen_hotel_data
-       
-    return hotels
-
-
-# FlightSearcher
-def get_cheapest_flight(flight_result, budget = 0, city = ''):
-    
-    lowest_price = flight_result.get('price_insights', {}).get('lowest_price', 0)
-    print("-----------------------------------")
-    print("lowest_price", lowest_price)
-    print("-----------------------------------")
-    
-    cheapest_flight = None
-    cheapest_flight_price = budget
-    
-    # find the cheapest flight
-    for flight_category in ['best_flights', 'other_flights']:
-        if flight_category in flight_result:
-            for flight in flight_result[flight_category]:
-                if flight['price'] == lowest_price:
-                    cheapest_flight = flight
-                    cheapest_flight_price = lowest_price
-                    break
-                elif flight['price'] < cheapest_flight_price:
-                    cheapest_flight_price = flight['price']
-                    cheapest_flight = flight
-            
-    flights_info = {city: {}}
-
-    # add the cheapest flight details
-    if cheapest_flight is not None:
-        flights_info[city]['price'] = cheapest_flight['price']
-        flights_info[city]['departure_token'] = cheapest_flight['departure_token']
-        flights_info[city]['flights'] = {}
-        for flight in cheapest_flight['flights']:
-            flights_info[city]['flights'][flight['flight_number']] = {
-                'departure_airport_name': flight['departure_airport']['name'],
-                'departure_time': flight['departure_airport']['time'],
-                'arrival_airport_name': flight['arrival_airport']['name'],
-                'arrival_time': flight['arrival_airport']['time'],
-                'duration': flight['duration'],
-                'airline': flight['airline'],
-                'flight_number': flight['flight_number'],
-            }
-            
-    return flights_info, cheapest_flight_price
-
-def get_return_flight(departure_token, params, city):
-    flight = None
-
-    params['departure_token'] = departure_token
-    flight_search = GoogleSearch(params)
-    flight_result = flight_search.get_dict()
-    print("return_flights_result", flight_result)
-
-    flight_raw = None
-    if 'best_flights' in flight_result and flight_result['best_flights']:
-        flight_raw = flight_result['best_flights'][0]
-    elif 'other_flights' in flight_result and flight_result['other_flights']:
-        flight_raw = flight_result['other_flights'][0]
-
-    flights_info = {city: {}}
-
-    if flight_raw and 'flights' in flight_raw:
-        flights_info[city]['flights'] = {}
-        for flight in flight_raw['flights']:
-            flights_info[city]['flights'][flight['flight_number']] = {
-                'departure_airport_name': flight['departure_airport']['name'],
-                'departure_time': flight['departure_airport']['time'],
-                'arrival_airport_name': flight['arrival_airport']['name'],
-                'arrival_time': flight['arrival_airport']['time'],
-                'duration': flight['duration'],
-                'airline': flight['airline'],
-                'flight_number': flight['flight_number'],
-            }
-    return flights_info
-
-def get_flights(cities, airport_codes, start_date, end_date, budget, destinations):
-    flights = []
-    return_flights = []
-    flight_prices = [0, 0, 0, 0, 0]
-    
-    # validations
-    if len(cities) != len(airport_codes):
-        print("The number of cities and airport codes should be the same.")
-        return flights, return_flights, []
-
-    chosen_cities = []
-    chosen_destinations = []
-    
-    # each destination is a name
-    for index, city in enumerate(cities):
-        print(f"Searching for flights to {city}...")
-
-        params = {
-            "engine": "google_flights",
-            "departure_id": "TLV",    #Tel Aviv
-            "arrival_id": airport_codes[index],  #destination code
-            "outbound_date": start_date,
-            "return_date": end_date,
-            "currency": "USD",
-            "hl": "en",
-            "max_price": budget[index],
-            "api_key": SERPAPI_API_KEY
-            }
-
-        flight_search = GoogleSearch(params)
-        flight_result = flight_search.get_dict()
-        print("flight_result", flight_result)
-        
-        if 'error' in flight_result:
-            print(f"Error: {flight_result['error']}")
-            continue
-
-        cheapest_flight, flight_prices[index] = get_cheapest_flight(flight_result, budget[index], city)
-    
-        if cheapest_flight is None:
-            print(f"No flights found for {city}.")
-        else:
-            print("-----------------------------------")
-            print("cheapest_flight", cheapest_flight)
-            print("-----------------------------------")    
-            return_flight = get_return_flight(cheapest_flight[city]['departure_token'], params, city)
-            if (return_flight is not None) and ('error' not in return_flight):
-                flights.append(cheapest_flight)
-                return_flights.append(return_flight)
-                chosen_cities.append(city)
-                print("-"*50)
-                print(f"Chosen destination: {destinations[index]}") 
-                print("-"*50)
-                chosen_destinations.append(destinations[index])
-                print("-"*50)
-                print("chosen_destinations", chosen_destinations)
-                print("-"*50)
-    
-    print('='*50)
-    print("flights", flights)
-    print('*'*50)
-    print("return_flights", return_flights)
-    print('*'*50)
-    print("chosen_cities", chosen_cities)
-    print('='*50)
-    print("flight_prices", flight_prices)
-    print('='*50)
-    print("chosen_destinations", chosen_destinations)
-    print('='*50)
-
-    return flights, return_flights, chosen_cities, flight_prices, chosen_destinations
-
-
-
-
-
-
 def get_trip_details():
-    start_date = input("Enter the start date of your trip (YYYY-MM-DD): ")
-    end_date = input("Enter the end date of your trip (YYYY-MM-DD): ")
-    budget = int(input("Enter your total budget in USD: "))
-    trip_type = input("Enter the type of trip (ski/beach/city): ")
+    start_date: str = Query(..., description="Start date of the trip (YYYY-MM-DD)"),
+    end_date: str = Query(..., description="End date of the trip (YYYY-MM-DD)"),
+    budget: int = Query(..., description="Total budget in USD"),
+    trip_type: str = Query(..., description="Type of trip (ski/beach/city)"),
 
     return start_date, end_date, budget, trip_type
 
@@ -413,17 +107,29 @@ def parse_trip_plan(trip_plan):
     return parsed_plan
 
 def display_options(hotels, destinations, going_flights_info, returning_flights_info, budgets):
+    trip_options = []
+    #  hard coded example
+    hotels ={'Kyoto': {'name': 'The Celestine Hotel Gion', 'price': 7694, 'image_url': {'thumbnail': 'https://lh5.googleusercontent.com/p/AF1QipPhLoRD6w1C-CEFEmzEDgGdykS1lqc5kyHxJgo=s287-w287-h192-n-k-no-v1', 'original_image': 'https://lh5.googleusercontent.com/p/AF1QipPhLoRD6w1C-CEFEmzEDgGdykS1lqc5kyHxJgo=s10000'}}, 'Florence': {'name': 'Hotel La Scaletta Florence', 'price': 8634, 'image_url': {'thumbnail': 'https://lh5.googleusercontent.com/p/AF1QipN7jkFB_YwPBvl-VL9Oa6IQoQ-v7TKSfjXrAeN8=s287-w287-h192-n-k-no-v1', 'original_image': 'https://lh5.googleusercontent.com/p/AF1QipN7jkFB_YwPBvl-VL9Oa6IQoQ-v7TKSfjXrAeN8=s10000'}}, 'Whistler': {'name': 'Sundial Hotel', 'price': 8081, 'image_url': {'thumbnail': 'https://lh5.googleusercontent.com/p/AF1QipNZxEA26cbbl6FXEIDmDrK-Lc1lE4oWB9QmnHdA=s287-w287-h192-n-k-no-v1', 'original_image': 'https://lh5.googleusercontent.com/p/AF1QipNZxEA26cbbl6FXEIDmDrK-Lc1lE4oWB9QmnHdA=s10000'}}, 'Melbourne': {'name': 'Grand Hyatt Melbourne', 'price': 6012, 'image_url': {'thumbnail': 'https://lh5.googleusercontent.com/p/AF1QipNMxShKMTIHQplJbjUa5Q-FW8xTDk537lSjMRwJ=s287-w287-h192-n-k-no-v1', 'original_image': 'https://lh5.googleusercontent.com/p/AF1QipNMxShKMTIHQplJbjUa5Q-FW8xTDk537lSjMRwJ=s10000'}}, 'Valencia': {'name': 'The Westin Valencia', 'price': 9368, 'image_url': {'thumbnail': 'https://lh5.googleusercontent.com/p/AF1QipPLEnFVflGYJQ3F1qcLEcOXzr4ar-V6vgVuYSNf=s287-w287-h192-n-k-no-v1', 'original_image': 'https://lh5.googleusercontent.com/p/AF1QipPLEnFVflGYJQ3F1qcLEcOXzr4ar-V6vgVuYSNf=s10000'}}}
+    destinations = ['Kyoto', 'Florence', 'Whistler', 'Melbourne', 'Valencia']
+    going_flights_info = [[{'Tokyo': {'price': 1462, 'departure_token': 'WyJDalJJWlU1cmVqWnJTM0JYTWxsQlJrNW1OMUZDUnkwdExTMHRMUzB0ZFdwaloyTXhNRUZCUVVGQlIxcFJkRzV2U25ka1RtTkJFaEZGVkRReE9YeEZWRFkzTW54UFdqRTNPQm9MQ0xuMUNCQUNHZ05WVTBRNEhIQzU5UWc9IixbWyJUTFYiLCIyMDI0LTA3LTExIiwiQUREIixudWxsLCJFVCIsIjQxOSJdLFsiQUREIiwiMjAyNC0wNy0xMSIsIklDTiIsbnVsbCwiRVQiLCI2NzIiXSxbIklDTiIsIjIwMjQtMDctMTIiLCJITkQiLG51bGwsIk9aIiwiMTc4Il1dXQ==', 'flights': {'ET 419': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-07-11 15:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-07-11 19:50', 'duration': 255, 'airline': 'Ethiopian', 'flight_number': 'ET 419'}, 'ET 672': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-07-11 22:35', 'arrival_airport_name': 'Incheon International Airport', 'arrival_time': '2024-07-12 16:00', 'duration': 685, 'airline': 'Ethiopian', 'flight_number': 'ET 672'}, 'OZ 178': {'departure_airport_name': 'Incheon International Airport', 'departure_time': '2024-07-12 21:10', 'arrival_airport_name': 'Haneda Airport', 'arrival_time': '2024-07-12 23:30', 'duration': 140, 'airline': 'Asiana', 'flight_number': 'OZ 178'}}}}, {'Rome': {'price': 200, 'departure_token': 'WyJDalJJUVhOblpVNTRUbGxKYWxWQlJIRnhWSGRDUnkwdExTMHRMUzB0YjJ0aWEySXhNMEZCUVVGQlIxcFJkRzQ0UnpsV1IxVkJFZzFYTmpJek1qWjhWell5TXpReEdnc0lnSndCRUFJYUExVlRSRGdjY0lDY0FRPT0iLFtbIlRMViIsIjIwMjQtMDctMTEiLCJCVUQiLG51bGwsIlc2IiwiMjMyNiJdLFsiQlVEIiwiMjAyNC0wNy0xMSIsIkZDTyIsbnVsbCwiVzYiLCIyMzQxIl1dXQ==', 'flights': {'W6 2326': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-07-11 10:55', 'arrival_airport_name': 'Budapest Ferenc Liszt International Airport', 'arrival_time': '2024-07-11 13:30', 'duration': 215, 'airline': 'Wizz Air', 'flight_number': 'W6 2326'}, 'W6 2341': {'departure_airport_name': 'Budapest Ferenc Liszt International Airport', 'departure_time': '2024-07-11 20:10', 'arrival_airport_name': 'Leonardo da Vinci–Fiumicino Airport', 'arrival_time': '2024-07-11 22:00', 'duration': 110, 'airline': 'Wizz Air', 'flight_number': 'W6 2341'}}}}, {'Vancouver': {'price': 1522, 'departure_token': 'WyJDalJJT1hsdlZHVmlXVTVLYWtGQlJHbHlMWGRDUnkwdExTMHRMUzB0TFMxNWJHbHpOMEZCUVVGQlIxcFJkRzlOUzNKVFUxTkJFZ3RCUmprMk0zeEJSak0zTkJvTENMMmtDUkFDR2dOVlUwUTRISEM5cEFrPSIsW1siVExWIiwiMjAyNC0wNy0xMSIsIkNERyIsbnVsbCwiQUYiLCI5NjMiXSxbIkNERyIsIjIwMjQtMDctMTIiLCJZVlIiLG51bGwsIkFGIiwiMzc0Il1dXQ==', 'flights': {'AF 963': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-07-11 16:30', 'arrival_airport_name': 'Paris Charles de Gaulle Airport', 'arrival_time': '2024-07-11 20:15', 'duration': 285, 'airline': 'Air France', 'flight_number': 'AF 963'}, 'AF 374': {'departure_airport_name': 'Paris Charles de Gaulle Airport', 'departure_time': '2024-07-12 10:10', 'arrival_airport_name': 'Vancouver International Airport', 'arrival_time': '2024-07-12 11:10', 'duration': 600, 'airline': 'Air France', 'flight_number': 'AF 374'}}}}, {'Sydney': {'price': 1308, 'departure_token': 'WyJDalJJZVVsWFFtcGhOemROV1VsQlJISnJZWGRDUnkwdExTMHRMUzB0TFhaMGNYTXlORUZCUVVGQlIxcFJkRzlyUzBaMFdVOUJFaEZGVkRReE9YeEZWRFl6T0h4VFVUSXlNUm9MQ00zOUJ4QUNHZ05WVTBRNEhIRE4vUWM9IixbWyJUTFYiLCIyMDI0LTA3LTExIiwiQUREIixudWxsLCJFVCIsIjQxOSJdLFsiQUREIiwiMjAyNC0wNy0xMSIsIlNJTiIsbnVsbCwiRVQiLCI2MzgiXSxbIlNJTiIsIjIwMjQtMDctMTIiLCJTWUQiLG51bGwsIlNRIiwiMjIxIl1dXQ==', 'flights': {'ET 419': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-07-11 15:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-07-11 19:50', 'duration': 255, 'airline': 'Ethiopian', 'flight_number': 'ET 419'}, 'ET 638': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-07-11 23:50', 'arrival_airport_name': 'Singapore Changi Airport', 'arrival_time': '2024-07-12 14:50', 'duration': 600, 'airline': 'Ethiopian', 'flight_number': 'ET 638'}, 'SQ 221': {'departure_airport_name': 'Singapore Changi Airport', 'departure_time': '2024-07-12 20:20', 'arrival_airport_name': 'Sydney Airport', 'arrival_time': '2024-07-13 05:55', 'duration': 455, 'airline': 'Singapore Airlines', 'flight_number': 'SQ 221'}}}}, {'Barcelona': {'price': 261, 'departure_token': 'WyJDalJJU0d4dFFVVkNSbGs1UVc5QlEwcGlXbEZDUnkwdExTMHRMUzB0TFhCcWMyMHhNa0ZCUVVGQlIxcFJkRzg0U25kcGR6WkJFZzFYTkRjMU1URjhWbGs0TVRBMUdnc0l2Y3NCRUFJYUExVlRSRGdjY0wzTEFRPT0iLFtbIlRMViIsIjIwMjQtMDctMTEiLCJBVEgiLG51bGwsIlc0IiwiNzUxMSJdLFsiQVRIIiwiMjAyNC0wNy0xMiIsIkJDTiIsbnVsbCwiVlkiLCI4MTA1Il1dXQ==', 'flights': {'W4 7511': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-07-11 14:00', 'arrival_airport_name': 'Athens International Airport "Eleftherios Venizelos"', 'arrival_time': '2024-07-11 16:15', 'duration': 135, 'airline': 'Wizz Air', 'flight_number': 'W4 7511'}, 'VY 8105': {'departure_airport_name': 'Athens International Airport "Eleftherios Venizelos"', 'departure_time': '2024-07-12 03:40', 'arrival_airport_name': 'Josep Tarradellas Barcelona-El Prat Airport', 'arrival_time': '2024-07-12 05:50', 'duration': 190, 'airline': 'Vueling', 'flight_number': 'VY 8105'}}}}]]
+    returning_flights_info = [[{'Tokyo': {'flights': {'NH 847': {'departure_airport_name': 'Haneda Airport', 'departure_time': '2024-08-07 10:50', 'arrival_airport_name': 'Suvarnabhumi Airport', 'arrival_time': '2024-08-07 15:30', 'duration': 400, 'airline': 'ANA', 'flight_number': 'NH 847'}, 'ET 609': {'departure_airport_name': 'Suvarnabhumi Airport', 'departure_time': '2024-08-08 00:55', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-08 05:35', 'duration': 520, 'airline': 'Ethiopian', 'flight_number': 'ET 609'}, 'ET 418': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-08 10:25', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-08 14:35', 'duration': 250, 'airline': 'Ethiopian', 'flight_number': 'ET 418'}}}}, {'Rome': {'flights': {'W4 6041': {'departure_airport_name': 'Leonardo da Vinci–Fiumicino Airport', 'departure_time': '2024-08-07 15:15', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-07 19:45', 'duration': 210, 'airline': 'Wizz Air', 'flight_number': 'W4 6041'}}}}, {'Vancouver': {'flights': {'AF 375': {'departure_airport_name': 'Vancouver International Airport', 'departure_time': '2024-08-07 13:30', 'arrival_airport_name': 'Paris Charles de Gaulle Airport', 'arrival_time': '2024-08-08 08:15', 'duration': 585, 'airline': 'Air France', 'flight_number': 'AF 375'}, 'AF 958': {'departure_airport_name': 'Paris Charles de Gaulle Airport', 'departure_time': '2024-08-08 09:30', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-08 14:45', 'duration': 255, 'airline': 'Air France', 'flight_number': 'AF 958'}}}}, {'Sydney': {'flights': {'QF 295': {'departure_airport_name': 'Sydney Airport', 'departure_time': '2024-08-07 09:50', 'arrival_airport_name': 'Suvarnabhumi Airport', 'arrival_time': '2024-08-07 16:40', 'duration': 590, 'airline': 'Qantas', 'flight_number': 'QF 295'}, 'ET 609': {'departure_airport_name': 'Suvarnabhumi Airport', 'departure_time': '2024-08-08 00:55', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-08 05:35', 'duration': 520, 'airline': 'Ethiopian', 'flight_number': 'ET 609'}, 'ET 418': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-08 10:25', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-08 14:35', 'duration': 250, 'airline': 'Ethiopian', 'flight_number': 'ET 418'}}}}, {'Barcelona': {'flights': {'VY 6108': {'departure_airport_name': 'Josep Tarradellas Barcelona-El Prat Airport', 'departure_time': '2024-08-07 09:40', 'arrival_airport_name': 'Leonardo da Vinci–Fiumicino Airport', 'arrival_time': '2024-08-07 11:35', 'duration': 115, 'airline': 'Vueling', 'flight_number': 'VY 6108'}, 'W4 6041': {'departure_airport_name': 'Leonardo da Vinci–Fiumicino Airport', 'departure_time': '2024-08-07 15:15', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-07 19:45', 'duration': 210, 'airline': 'Wizz Air', 'flight_number': 'W4 6041'}}}}]]
+    budgets = [844, 1166, 397, 2680, 371]
+
     for idx, destination in enumerate(destinations):
-        print(f"Option {idx + 1}: {going_flights_info[idx]} - {returning_flights_info[idx]}- {hotels[destination]} - {hotels[destination]['name']} - ${hotels[destination]['price']} - {budgets[idx]}")
+        option = {
+            "id": idx,
+            "destination": destination,
+            "going_flight": going_flights_info[0][idx],
+            "returning_flight": returning_flights_info[0][idx],
+            "hotel": hotels[destination]['name'],
+            "hotel_image": hotels[destination]['image_url']['original_image'],
+            "price": budgets[idx],
 
-    choice = int(input("Choose a destination (1-5): ")) - 1
-    chosen_option = hotels[destinations[choice]]
-    chosen_option['destination'] = destinations[choice]
-    chosen_option['going_flight'] = going_flights_info[choice]
-    chosen_option['returning_flight'] = returning_flights_info[choice]
-    chosen_option['price'] = budgets[choice]
+        }
+        print("option", option)
+        trip_options.append(option)
 
-    return chosen_option
+    return trip_options
 
 def print_flights_state(going_flights_info, returning_flights_info, serapi_tries):
     print('-' * 50)
@@ -450,86 +156,96 @@ def print_flights_state(going_flights_info, returning_flights_info, serapi_tries
     print("Try number:", serapi_tries)
     print('*' * 50)
 
-@app.get("/search")
-def planTrip():
-    # start_date, end_date, budget, trip_type = get_trip_details()
-    start_date, end_date, budget, trip_type = '2024-08-01', '2024-08-10', 10000, 'city'
-    
-    # possible_destinations = []
-    # budgets = [budget] * 5
-    # total_costs = [0] * 5
+@app.get("/possible-destinations")
+def get_possible_destinations(
+    start_date: str, end_date: str, budget: int, trip_type: str
+) -> List[Dict[str, Any]]:
+    try:
+        # possible_destinations = []
+        # budgets = [budget] * 5
+        # total_costs = [0] * 5
 
-    # going_flights_info = []
-    # returning_flights_info = []
-    # destinations_with_flights = []
-    
-    # serapi_tries = 0
-    # number_of_missing_destinations = 5
-    # chosen_cities = []
-   
-    # while number_of_missing_destinations > 0 and serapi_tries < 1:
-    #     possible_destinations = ChatGPTFetcher.get_possible_destinations(start_date, end_date, trip_type, number_of_missing_destinations, chosen_cities)
-    #     cities, destinations, airport_codes = parse_destinations(possible_destinations)
+        # going_flights_info = []
+        # returning_flights_info = []
+        # destinations_with_flights = []
+        # trip_options = []
         
-    #     added_going_flights_info, added_returning_flights_info, chosen_cities, flight_prices, destinations_with_flights = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budgets, destinations)
-    #     going_flights_info.append(added_going_flights_info)
-    #     returning_flights_info.append(added_returning_flights_info)
-
-    #     print_flights_state(going_flights_info, returning_flights_info, serapi_tries)
-    #     number_of_missing_destinations -= len(going_flights_info[0])
-
-    #     serapi_tries += 1
+        # serapi_tries = 0
+        # number_of_missing_destinations = 5
+        # chosen_cities = []
     
-    # new_budgets = []
-    # for index, price in enumerate(flight_prices):
-    #     if price != 0:
-    #         new_budgets.append(budgets[index] - price)
+        # while number_of_missing_destinations > 0 and serapi_tries < 1:
+        #     possible_destinations = ChatGPTFetcher.get_possible_destinations(start_date, end_date, trip_type, number_of_missing_destinations, chosen_cities)
+        #     cities, destinations, airport_codes = parse_destinations(possible_destinations)
+            
+        #     added_going_flights_info, added_returning_flights_info, chosen_cities, flight_prices, destinations_with_flights = FlightSearcher.get_flights(cities, airport_codes, start_date, end_date, budgets, destinations)
+        #     going_flights_info.append(added_going_flights_info)
+        #     returning_flights_info.append(added_returning_flights_info)
 
-    # budgets = new_budgets
-    # destinations = destinations_with_flights
+        #     print_flights_state(going_flights_info, returning_flights_info, serapi_tries)
+        #     number_of_missing_destinations -= len(going_flights_info[0])
+
+        #     serapi_tries += 1
+        
+        # new_budgets = []
+        # for index, price in enumerate(flight_prices):
+        #     if price != 0:
+        #         new_budgets.append(budgets[index] - price)
+
+        # budgets = new_budgets
+        # destinations = destinations_with_flights
+        
+        # print("budgets", budgets)
+        # print("destinations_with_flights", destinations)
+        # print("finished getting flights") 
     
-    # print("budgets", budgets)
-    # print("destinations_with_flights", destinations)
-    # print("finished getting flights") 
-   
-    # hotels = HotelSearcher.get_hotels_in_budget(destinations, budgets, start_date, end_date)
+        # hotels = HotelSearcher.get_hotels_in_budget(destinations, budgets, start_date, end_date)
+        
+        # if not hotels:
+        #     print("No suitable hotels found within the budget.")
+        #     return
+        
+        # print("budgets before subtraction", budgets)
+        # for index, destination in enumerate(destinations):
+        #     if hotels[destination]['price'] == 0:
+        #         del hotels[destination]
+        #         del destinations[index]
+        #         del budgets[index]
+        #         del going_flights_info[0][index]
+        #         del returning_flights_info[0][index]
+        #     else:
+        #         budgets[index] -= hotels[destination]['price']
+
+        # print("budgets after subtraction", budgets)
+
+        # print("hotels", hotels)
+        # print("destinations", destinations)
+        # print("going_flights_info", going_flights_info)
+        # print("returning_flights_info", returning_flights_info)
+        # print("finished getting hotels")
+
+        # for index, complemet_cost in enumerate(budgets):
+        #     total_costs[index] = budget - complemet_cost
+        
+        # trip_options = display_options(hotels, destinations, going_flights_info[0], returning_flights_info[0], total_costs)
+        trip_options =  [{'id': 0, 'destination': 'Kyoto', 'going_flight': {'Tokyo': {'price': 1462, 'departure_token': 'WyJDalJJWlU1cmVqWnJTM0JYTWxsQlJrNW1OMUZDUnkwdExTMHRMUzB0ZFdwaloyTXhNRUZCUVVGQlIxcFJkRzV2U25ka1RtTkJFaEZGVkRReE9YeEZWRFkzTW54UFdqRTNPQm9MQ0xuMUNCQUNHZ05WVTBRNEhIQzU5UWc9IixbWyJUTFYiLCIyMDI0LTA3LTExIiwiQUREIixudWxsLCJFVCIsIjQxOSJdLFsiQUREIiwiMjAyNC0wNy0xMSIsIklDTiIsbnVsbCwiRVQiLCI2NzIiXSxbIklDTiIsIjIwMjQtMDctMTIiLCJITkQiLG51bGwsIk9aIiwiMTc4Il1dXQ==', 'flights': {'ET 419': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-07-11 15:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-07-11 19:50', 'duration': 255, 'airline': 'Ethiopian', 'flight_number': 'ET 419'}, 'ET 672': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-07-11 22:35', 'arrival_airport_name': 'Incheon International Airport', 'arrival_time': '2024-07-12 16:00', 'duration': 685, 'airline': 'Ethiopian', 'flight_number': 'ET 672'}, 'OZ 178': {'departure_airport_name': 'Incheon International Airport', 'departure_time': '2024-07-12 21:10', 'arrival_airport_name': 'Haneda Airport', 'arrival_time': '2024-07-12 23:30', 'duration': 140, 'airline': 'Asiana', 'flight_number': 'OZ 178'}}}}, 'returning_flight': {'Tokyo': {'flights': {'NH 847': {'departure_airport_name': 'Haneda Airport', 'departure_time': '2024-08-07 10:50', 'arrival_airport_name': 'Suvarnabhumi Airport', 'arrival_time': '2024-08-07 15:30', 'duration': 400, 'airline': 'ANA', 'flight_number': 'NH 847'}, 'ET 609': {'departure_airport_name': 'Suvarnabhumi Airport', 'departure_time': '2024-08-08 00:55', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-08 05:35', 'duration': 520, 'airline': 'Ethiopian', 'flight_number': 'ET 609'}, 'ET 418': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-08 10:25', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-08 14:35', 'duration': 250, 'airline': 'Ethiopian', 'flight_number': 'ET 418'}}}}, 'hotel': 'The Celestine Hotel Gion', 'hotel_image': 'https://lh5.googleusercontent.com/p/AF1QipPhLoRD6w1C-CEFEmzEDgGdykS1lqc5kyHxJgo=s10000', 'price': 844}, {'id': 1, 'destination': 'Florence', 'going_flight': {'Rome': {'price': 200, 'departure_token': 'WyJDalJJUVhOblpVNTRUbGxKYWxWQlJIRnhWSGRDUnkwdExTMHRMUzB0YjJ0aWEySXhNMEZCUVVGQlIxcFJkRzQ0UnpsV1IxVkJFZzFYTmpJek1qWjhWell5TXpReEdnc0lnSndCRUFJYUExVlRSRGdjY0lDY0FRPT0iLFtbIlRMViIsIjIwMjQtMDctMTEiLCJCVUQiLG51bGwsIlc2IiwiMjMyNiJdLFsiQlVEIiwiMjAyNC0wNy0xMSIsIkZDTyIsbnVsbCwiVzYiLCIyMzQxIl1dXQ==', 'flights': {'W6 2326': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-07-11 10:55', 'arrival_airport_name': 'Budapest Ferenc Liszt International Airport', 'arrival_time': '2024-07-11 13:30', 'duration': 215, 'airline': 'Wizz Air', 'flight_number': 'W6 2326'}, 'W6 2341': {'departure_airport_name': 'Budapest Ferenc Liszt International Airport', 'departure_time': '2024-07-11 20:10', 'arrival_airport_name': 'Leonardo da Vinci–Fiumicino Airport', 'arrival_time': '2024-07-11 22:00', 'duration': 110, 'airline': 'Wizz Air', 'flight_number': 'W6 2341'}}}}, 'returning_flight': {'Rome': {'flights': {'W4 6041': {'departure_airport_name': 'Leonardo da Vinci–Fiumicino Airport', 'departure_time': '2024-08-07 15:15', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-07 19:45', 'duration': 210, 'airline': 'Wizz Air', 'flight_number': 'W4 6041'}}}}, 'hotel': 'Hotel La Scaletta Florence', 'hotel_image': 'https://lh5.googleusercontent.com/p/AF1QipN7jkFB_YwPBvl-VL9Oa6IQoQ-v7TKSfjXrAeN8=s10000', 'price': 1166},{'id': 2, 'destination': 'Whistler', 'going_flight': {'Vancouver': {'price': 1522, 'departure_token': 'WyJDalJJT1hsdlZHVmlXVTVLYWtGQlJHbHlMWGRDUnkwdExTMHRMUzB0TFMxNWJHbHpOMEZCUVVGQlIxcFJkRzlOUzNKVFUxTkJFZ3RCUmprMk0zeEJSak0zTkJvTENMMmtDUkFDR2dOVlUwUTRISEM5cEFrPSIsW1siVExWIiwiMjAyNC0wNy0xMSIsIkNERyIsbnVsbCwiQUYiLCI5NjMiXSxbIkNERyIsIjIwMjQtMDctMTIiLCJZVlIiLG51bGwsIkFGIiwiMzc0Il1dXQ==', 'flights': {'AF 963': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-07-11 16:30', 'arrival_airport_name': 'Paris Charles de Gaulle Airport', 'arrival_time': '2024-07-11 20:15', 'duration': 285, 'airline': 'Air France', 'flight_number': 'AF 963'}, 'AF 374': {'departure_airport_name': 'Paris Charles de Gaulle Airport', 'departure_time': '2024-07-12 10:10', 'arrival_airport_name': 'Vancouver International Airport', 'arrival_time': '2024-07-12 11:10', 'duration': 600, 'airline': 'Air France', 'flight_number': 'AF 374'}}}}, 'returning_flight': {'Vancouver': {'flights': {'AF 375': {'departure_airport_name': 'Vancouver International Airport', 'departure_time': '2024-08-07 13:30', 'arrival_airport_name': 'Paris Charles de Gaulle Airport', 'arrival_time': '2024-08-08 08:15', 'duration': 585, 'airline': 'Air France', 'flight_number': 'AF 375'}, 'AF 958': {'departure_airport_name': 'Paris Charles de Gaulle Airport', 'departure_time': '2024-08-08 09:30', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-08 14:45', 'duration': 255, 'airline': 'Air France', 'flight_number': 'AF 958'}}}}, 'hotel': 'Sundial Hotel', 'hotel_image': 'https://lh5.googleusercontent.com/p/AF1QipNZxEA26cbbl6FXEIDmDrK-Lc1lE4oWB9QmnHdA=s10000', 'price': 397},{'id': 3, 'destination': 'Melbourne', 'going_flight': {'Sydney': {'price': 1308, 'departure_token': 'WyJDalJJZVVsWFFtcGhOemROV1VsQlJISnJZWGRDUnkwdExTMHRMUzB0TFhaMGNYTXlORUZCUVVGQlIxcFJkRzlyUzBaMFdVOUJFaEZGVkRReE9YeEZWRFl6T0h4VFVUSXlNUm9MQ00zOUJ4QUNHZ05WVTBRNEhIRE4vUWM9IixbWyJUTFYiLCIyMDI0LTA3LTExIiwiQUREIixudWxsLCJFVCIsIjQxOSJdLFsiQUREIiwiMjAyNC0wNy0xMSIsIlNJTiIsbnVsbCwiRVQiLCI2MzgiXSxbIlNJTiIsIjIwMjQtMDctMTIiLCJTWUQiLG51bGwsIlNRIiwiMjIxIl1dXQ==', 'flights': {'ET 419': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-07-11 15:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-07-11 19:50', 'duration': 255, 'airline': 'Ethiopian', 'flight_number': 'ET 419'}, 'ET 638': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-07-11 23:50', 'arrival_airport_name': 'Singapore Changi Airport', 'arrival_time': '2024-07-12 14:50', 'duration': 600, 'airline': 'Ethiopian', 'flight_number': 'ET 638'}, 'SQ 221': {'departure_airport_name': 'Singapore Changi Airport', 'departure_time': '2024-07-12 20:20', 'arrival_airport_name': 'Sydney Airport', 'arrival_time': '2024-07-13 05:55', 'duration': 455, 'airline': 'Singapore Airlines', 'flight_number': 'SQ 221'}}}}, 'returning_flight': {'Sydney': {'flights': {'QF 295': {'departure_airport_name': 'Sydney Airport', 'departure_time': '2024-08-07 09:50', 'arrival_airport_name': 'Suvarnabhumi Airport', 'arrival_time': '2024-08-07 16:40', 'duration': 590, 'airline': 'Qantas', 'flight_number': 'QF 295'}, 'ET 609': {'departure_airport_name': 'Suvarnabhumi Airport', 'departure_time': '2024-08-08 00:55', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-08 05:35', 'duration': 520, 'airline': 'Ethiopian', 'flight_number': 'ET 609'}, 'ET 418': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-08 10:25', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-08 14:35', 'duration': 250, 'airline': 'Ethiopian', 'flight_number': 'ET 418'}}}}, 'hotel': 'Grand Hyatt Melbourne', 'hotel_image': 'https://lh5.googleusercontent.com/p/AF1QipNMxShKMTIHQplJbjUa5Q-FW8xTDk537lSjMRwJ=s10000', 'price': 2680},{'id': 4, 'destination': 'Valencia', 'going_flight': {'Barcelona': {'price': 261, 'departure_token': 'WyJDalJJU0d4dFFVVkNSbGs1UVc5QlEwcGlXbEZDUnkwdExTMHRMUzB0TFhCcWMyMHhNa0ZCUVVGQlIxcFJkRzg0U25kcGR6WkJFZzFYTkRjMU1URjhWbGs0TVRBMUdnc0l2Y3NCRUFJYUExVlRSRGdjY0wzTEFRPT0iLFtbIlRMViIsIjIwMjQtMDctMTEiLCJBVEgiLG51bGwsIlc0IiwiNzUxMSJdLFsiQVRIIiwiMjAyNC0wNy0xMiIsIkJDTiIsbnVsbCwiVlkiLCI4MTA1Il1dXQ==', 'flights': {'W4 7511': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-07-11 14:00', 'arrival_airport_name': 'Athens International Airport "Eleftherios Venizelos"', 'arrival_time': '2024-07-11 16:15', 'duration': 135, 'airline': 'Wizz Air', 'flight_number': 'W4 7511'}, 'VY 8105': {'departure_airport_name': 'Athens International Airport "Eleftherios Venizelos"', 'departure_time': '2024-07-12 03:40', 'arrival_airport_name': 'Josep Tarradellas Barcelona-El Prat Airport', 'arrival_time': '2024-07-12 05:50', 'duration': 190, 'airline': 'Vueling', 'flight_number': 'VY 8105'}}}}, 'returning_flight': {'Barcelona': {'flights': {'VY 6108': {'departure_airport_name': 'Josep Tarradellas Barcelona-El Prat Airport', 'departure_time': '2024-08-07 09:40', 'arrival_airport_name': 'Leonardo da Vinci–Fiumicino Airport', 'arrival_time': '2024-08-07 11:35', 'duration': 115, 'airline': 'Vueling', 'flight_number': 'VY 6108'}, 'W4 6041': {'departure_airport_name': 'Leonardo da Vinci–Fiumicino Airport', 'departure_time': '2024-08-07 15:15', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-07 19:45', 'duration': 210, 'airline': 'Wizz Air', 'flight_number': 'W4 6041'}}}}, 'hotel': 'The Westin Valencia', 'hotel_image': 'https://lh5.googleusercontent.com/p/AF1QipPLEnFVflGYJQ3F1qcLEcOXzr4ar-V6vgVuYSNf=s10000', 'price': 371}]
+
+        return trip_options
     
-    # if not hotels:
-    #     print("No suitable hotels found within the budget.")
-    #     return
-    
-    # print("budgets before subtraction", budgets)
-    # for index, destination in enumerate(destinations):
-    #     if hotels[destination]['price'] == 0:
-    #         del hotels[destination]
-    #         del destinations[index]
-    #         del budgets[index]
-    #         del going_flights_info[0][index]
-    #         del returning_flights_info[0][index]
-    #     else:
-    #         budgets[index] -= hotels[destination]['price']
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    # print("budgets after subtraction", budgets)
+@ app.get("/generate-itinerary-and-images")
+def generate_itinerary_and_images(
+    destination: str, start_date: str, end_date: str, trip_type:str, going_flight:str, returning_flight:str, hotel:str, hotel_image:str, price:int
+) -> List[Dict[str, Any]]:
 
-    # print("hotels", hotels)
-    # print("destinations", destinations)
-    # print("going_flights_info", going_flights_info)
-    # print("returning_flights_info", returning_flights_info)
-    # print("finished getting hotels")
-
-    # for index, complemet_cost in enumerate(budgets):
-    #     total_costs[index] = budget - complemet_cost
-    
-
-    # chosen_option = display_options(hotels, destinations, going_flights_info[0], returning_flights_info[0], total_costs)
-    # print("chosen_option", chosen_option)
-
-    chosen_option = {'name': 'Lanzerac Wine Estate', 'price': 6378, 'image_url': {'thumbnail': 'https://lh3.googleusercontent.com/proxy/6KPWMK4_GyB8XKo03zGJS5x67qUHgqMFxeuifLWZ77fEv3WfjdVvdPfSvA8NxbXQeqqiUSgh5AIhcI3ZLp7V9PXkdUcQdBP7edosNAXV8jXoHS13rCbC2qYKFcpG1w8rHrD0tCslvPSw7FpZwjBxJaFjqWuclw=s287-w287-h192-n-k-no-v1', 'original_image': 'https://images.trvl-media.com/lodging/2000000/1180000/1179800/1179790/7fae941e_z.jpg'}, 'destination': 'Stellenbosch', 'going_flight': {'Cape Town': {'price': 1042, 'departure_token': 'WyJDalJJU0VWalZGOXZWWGxCZVVGQlFuaG9OMmRDUnkwdExTMHRMUzB0TFhCcWRHNHlNRUZCUVVGQlIxcFJaRU5yUlZGc04wVkJFZ3RGVkRReE9YeEZWRGcwTnhvTENNZXRCaEFDR2dOVlUwUTRISERIclFZPSIsW1siVExWIiwiMjAyNC0wOC0wMSIsIkFERCIsbnVsbCwiRVQiLCI0MTkiXSxbIkFERCIsIjIwMjQtMDgtMDIiLCJDUFQiLG51bGwsIkVUIiwiODQ3Il1dXQ==', 'flights': {'ET 419': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-08-01 15:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-01 19:50', 'duration': 255, 'airline': 'Ethiopian', 'flight_number': 'ET 419'}, 'ET 847': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-02 08:15', 'arrival_airport_name': 'Cape Town International Airport', 'arrival_time': '2024-08-02 13:45', 'duration': 390, 'airline': 'Ethiopian', 'flight_number': 'ET 847'}}}}, 'returning_flight': {'Cape Town': {'flights': {'ET 846': {'departure_airport_name': 'Cape Town International Airport', 'departure_time': '2024-08-10 14:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-10 22:00', 'duration': 385, 'airline': 'Ethiopian', 'flight_number': 'ET 846'}, 'ET 404': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-10 23:55', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-11 04:00', 'duration': 245, 'airline': 'Ethiopian', 'flight_number': 'ET 404'}}}}}
+    # chosen_option = {'name': 'Lanzerac Wine Estate', 'price': 6378, 'image_url': {'thumbnail': 'https://lh3.googleusercontent.com/proxy/6KPWMK4_GyB8XKo03zGJS5x67qUHgqMFxeuifLWZ77fEv3WfjdVvdPfSvA8NxbXQeqqiUSgh5AIhcI3ZLp7V9PXkdUcQdBP7edosNAXV8jXoHS13rCbC2qYKFcpG1w8rHrD0tCslvPSw7FpZwjBxJaFjqWuclw=s287-w287-h192-n-k-no-v1', 'original_image': 'https://images.trvl-media.com/lodging/2000000/1180000/1179800/1179790/7fae941e_z.jpg'}, 'destination': 'Stellenbosch', 'going_flight': {'Cape Town': {'price': 1042, 'departure_token': 'WyJDalJJU0VWalZGOXZWWGxCZVVGQlFuaG9OMmRDUnkwdExTMHRMUzB0TFhCcWRHNHlNRUZCUVVGQlIxcFJaRU5yUlZGc04wVkJFZ3RGVkRReE9YeEZWRGcwTnhvTENNZXRCaEFDR2dOVlUwUTRISERIclFZPSIsW1siVExWIiwiMjAyNC0wOC0wMSIsIkFERCIsbnVsbCwiRVQiLCI0MTkiXSxbIkFERCIsIjIwMjQtMDgtMDIiLCJDUFQiLG51bGwsIkVUIiwiODQ3Il1dXQ==', 'flights': {'ET 419': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-08-01 15:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-01 19:50', 'duration': 255, 'airline': 'Ethiopian', 'flight_number': 'ET 419'}, 'ET 847': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-02 08:15', 'arrival_airport_name': 'Cape Town International Airport', 'arrival_time': '2024-08-02 13:45', 'duration': 390, 'airline': 'Ethiopian', 'flight_number': 'ET 847'}}}}, 'returning_flight': {'Cape Town': {'flights': {'ET 846': {'departure_airport_name': 'Cape Town International Airport', 'departure_time': '2024-08-10 14:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-10 22:00', 'duration': 385, 'airline': 'Ethiopian', 'flight_number': 'ET 846'}, 'ET 404': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-10 23:55', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-11 04:00', 'duration': 245, 'airline': 'Ethiopian', 'flight_number': 'ET 404'}}}}}
     
     trip_plan_tries = 0
     while trip_plan_tries < 3:
         # trip_plan = ChatGPTFetcher.create_daily_plan(chosen_option['destination'], start_date, end_date, trip_type)
-        trip_plan = create_daily_plan(chosen_option['destination'], start_date, end_date, trip_type)
+        trip_plan = ChatGPTFetcher.create_daily_plan(destination, start_date, end_date, trip_type)
         parsed_plan = parse_trip_plan(trip_plan)
         print("parsed_plan", parsed_plan)
 
@@ -541,20 +257,31 @@ def planTrip():
         # If the last date is present, break the loop
         break
 
-    # trip_images = ChatGPTFetcher.generate_trip_images(chosen_option['destination'], trip_type)
-    trip_images = generate_trip_images(chosen_option['destination'], trip_type)
+    # trip_images = ChatGPTFetcher.generate_trip_images(destination, trip_type)
+    trip_images = []
     print("trip_images", trip_images)
 
     print("\nTrip Summary:")
-    print(f"Destination: {chosen_option['destination']}")
-    print(f"flights: {[chosen_option['going_flight'], chosen_option['returning_flight']]}")
-    print(f"Hotel: {chosen_option['name']}")
-    print(f"Hotel image: {chosen_option['image_url']['original_image']}")
-    print(f"Total Cost: ${chosen_option['price']}")
+    print(f"Destination: {destination}")
+    print(f"flights: {[going_flight, returning_flight]}")
+    print(f"Hotel: {hotel}")
+    print(f"Hotel image: {hotel_image}")
+    print(f"Total Cost: ${price}")
     print(f"Trip Plan:\n{trip_plan}")
-    print("\nTrip Images:")
-    for idx, img_url in enumerate(trip_images):
-        print(f"Image {idx + 1}: {img_url}")
+    # print("\nTrip Images:")
+    # for idx, img_url in enumerate(trip_images):
+    #     print(f"Image {idx + 1}: {img_url}")
+
+    return {
+        "destination": destination,
+        "going flights": going_flight,
+         "returning flights": returning_flight,
+        "hotel": hotel,
+        "hotel_image": hotel_image,
+        "total_cost": price,
+        "trip_plan": trip_plan,
+        "trip_images": trip_images
+    }
 
 
 if __name__ == "__main__":

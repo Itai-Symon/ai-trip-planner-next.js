@@ -15,40 +15,45 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 def get_most_expensive_hotel(data, budget):
     print("data", data)
-    properties = data['properties']
+    try:
+        properties = data['properties']
+        if not properties:
+            return None
 
-    if not properties:
-        return None
-
-    print("properties", properties[0])
-    chosen_hotel_data = {}
-    name = properties[0]['name'] 
-    current_max_price =  0 
-    limited_price = budget
-    image_url = properties[0]['images'][0]
+        print("properties", properties[0])
+        chosen_hotel_data = {}
+        name = properties[0]['name'] 
+        current_max_price =  0 
+        limited_price = budget
+        image_url = properties[0]['images'][0]
+        
+        # print("*"*50)
+        # print("properties", properties)
+        # print("*"*50)
+        
+        for property in properties:
+            # print("property", property)
+            if ('total_rate' in property) and ('extracted_lowest' in property['total_rate']):
+                print("property['total_rate']['extracted_lowest']", property['total_rate']['extracted_lowest'])
+                price = property['total_rate']['extracted_lowest']
+                if price > current_max_price and price <= limited_price:
+                    print("price", price, "max_price", current_max_price)
+                    current_max_price = price
+                    name = property['name']
+                    image_url = property['images'][0]
+        
+        chosen_hotel_data['name'] = name
+        chosen_hotel_data['price'] = current_max_price
+        chosen_hotel_data['image_url'] = image_url
+        
+        print(name)
+    except Exception as e:
+        chosen_hotel_data['name'] = 'No hotel found'
+        chosen_hotel_data['price'] = 0
+        chosen_hotel_data['image_url'] = ''
     
-    # print("*"*50)
-    # print("properties", properties)
-    # print("*"*50)
-    
-    for property in properties:
-        # print("property", property)
-        if ('total_rate' in property) and ('extracted_lowest' in property['total_rate']):
-            print("property['total_rate']['extracted_lowest']", property['total_rate']['extracted_lowest'])
-            price = property['total_rate']['extracted_lowest']
-            if price > current_max_price and price <= limited_price:
-                print("price", price, "max_price", current_max_price)
-                current_max_price = price
-                name = property['name']
-                image_url = property['images'][0]
-    
-    chosen_hotel_data['name'] = name
-    chosen_hotel_data['price'] = current_max_price
-    chosen_hotel_data['image_url'] = image_url
-    
-    print(name)
-
-    return chosen_hotel_data
+    finally:
+        return chosen_hotel_data
 
 def get_hotels_in_budget(destinations, budgets, start_date, end_date):
     hotels = {}
