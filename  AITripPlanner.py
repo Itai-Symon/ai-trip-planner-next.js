@@ -260,8 +260,8 @@ def generate_itinerary_and_images(
             # If the last date is present, break the loop
             # break
 
-        # trip_images = ChatGPTFetcher.generate_trip_images(destination, trip_type)
-        trip_images = [1,2,3,4]
+        trip_images = ChatGPTFetcher.generate_trip_images(destination, trip_type)
+        # trip_images = [1,2,3,4]
         print("trip_images", trip_images)
 
         print("\nTrip Summary:")

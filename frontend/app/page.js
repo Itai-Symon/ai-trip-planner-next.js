@@ -44,7 +44,7 @@ export default function Home() {
           trip_type: tripType,
         },
       });
-      console.log('res:',res.data[0].trip_plan);  // Print the res to the console
+      console.log('res:',res.data[0]);  // Print the res to the console
       setSelectedOption({ ...option, ...res.data[0] });
       console.log('Selected Option:',selectedOption);  // Print the selectedOption to the console
     } catch (err) {
@@ -95,7 +95,33 @@ export default function Home() {
         </table>
       </div>
     );
-};
+  };
+
+  const renderTripPlan = (tripPlan) => {
+    if (!tripPlan) return null;
+
+    const days = tripPlan.split('\n\n').filter(day => day.trim() !== '');
+
+    return (
+      <div>
+        <h3>Trip Plan</h3>
+        {days.map((day, index) => {
+          const lines = day.split('\n').filter(line => line.trim() !== '');
+          const [date, ...activities] = lines;
+          return (
+            <div key={index}>
+              <h4>{date}</h4>
+              <ul>
+                {activities.map((activity, i) => (
+                  <li key={i}>{activity}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className={styles.container}>
@@ -216,15 +242,15 @@ export default function Home() {
             <p>${selectedOption.price}</p>
           </div>
           <div>
-            <h3>Trip Plan</h3>
-            <pre>{selectedOption.trip_plan}</pre>
+            {renderTripPlan(selectedOption.trip_plan)}
           </div>
-          <div>
-            {/* <h3>Trip Images</h3>
-            {selectedOption.trip_images.map((imgUrl, index) => (
-              <img key={index} src={imgUrl} alt={`Trip Image ${index + 1}`} className={styles.tripImage} />
-            ))} */}
-          </div>
+            <div>
+              <h3>Trip Images</h3>
+              {selectedOption && selectedOption.trip_images && selectedOption.trip_images.map((imgUrl, index) => (
+                <img key={index} src={imgUrl} alt={`Trip Image ${index + 1}`} className={styles.tripImage} />
+              ))}
+            </div>
+
         </div>
       )}
     </div>
