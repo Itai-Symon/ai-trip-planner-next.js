@@ -51,12 +51,13 @@ export default function Home() {
 
   const renderFlightDetails = (flight) => {
     console.log(flight);  // Print the flight parameter to the console
-    if (!flight || !flight.flights) {
+    const city = Object.keys(flight)[0];
+    console.log('city:',city);  // Print the city to the console
+    if (!flight || !flight[city].flights) {
       return <div>No flight details available.</div>;
   }
-
-    const { flights, price } = flight;
-
+    
+    const { flights, price } = flight[city];
     return (
       <div>
         {price && <h3>Total Price: ${price}</h3>}
@@ -150,7 +151,7 @@ export default function Home() {
           <h2 className={styles.subheading}>Select a Trip Option</h2>
           {tripOptions.map((option) => {
             console.log('option:',option);  // Print the option to the console
-            console.log('option.going_flight:',option.going_flight['Tokyo']);  // Print the going_flight to the console
+            // console.log('option.going_flight:',option.going_flight['Tokyo']);  // Print the going_flight to the console
             return (
               <div
                 key={option.id}
@@ -158,9 +159,9 @@ export default function Home() {
               >
                 <p>Destination: {option.destination}</p>
                 <h3>Going Flight</h3>
-                {renderFlightDetails(option.going_flight['Tokyo'])}
+                {renderFlightDetails(option.going_flight)}
                 <h3>Returning Flight</h3>
-                {renderFlightDetails(option.returning_flight['Tokyo'])}
+                {renderFlightDetails(option.returning_flight)}
                 <p>Hotel: {option.hotel}</p>
                 <p>Hotel Price: ${option.hotel_price}</p>
                 <p>Total Price: ${option.price}</p>
