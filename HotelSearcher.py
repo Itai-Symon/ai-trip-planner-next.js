@@ -16,12 +16,19 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 def get_most_expensive_hotel(data, budget):
     print("data", data)
     try:
+        chosen_hotel_data = {}
+        chosen_hotel_data['name'] = 'No hotel found'
+        chosen_hotel_data['price'] = 0
+        chosen_hotel_data['image_url'] = ''
+
+        if 'properties' not in data or not data['properties']:
+            return chosen_hotel_data
+       
         properties = data['properties']
-        if not properties:
-            return None
+        
 
         print("properties", properties[0])
-        chosen_hotel_data = {}
+        
         name = properties[0]['name'] 
         current_max_price =  0 
         limited_price = budget
@@ -78,8 +85,11 @@ def get_hotels_in_budget(destinations, budgets, start_date, end_date):
         print("&"*50)
         print("chosen_hotel_data", chosen_hotel_data, "budgets[index]", budgets[index])
         print("&"*50)
-        if chosen_hotel_data is not None:
+        if chosen_hotel_data is not None and chosen_hotel_data['price'] > 0:
             print("inside the data")
             hotels[destination] = chosen_hotel_data
+
+        if hotels is None or not hotels:
+            hotels = []
        
     return hotels

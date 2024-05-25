@@ -65,7 +65,7 @@ export default function Home() {
     const { flights, price } = flight[city];
     return (
       <div>
-        {price && <h3>Total Price: ${price}</h3>}
+        {price && <h4>Flights Price: ${price}</h4>}
         <h4>{flight_direction} Flights</h4>
         <table className={styles.flightTable}>
           <thead>
@@ -208,6 +208,7 @@ export default function Home() {
                 {renderFlightDetails(option.going_flight, 'going_flight')}
                 {renderFlightDetails(option.returning_flight, 'returning_flight')}
                 <p>Hotel: {option.hotel}</p>
+                <img src={option.hotel_image} className={styles.tripImage} />
                 <p>Hotel Price: ${option.hotel_price}</p>
                 <p>Total Price: ${option.price}</p>
                 <button onClick={() => handleOptionSelect(option)}>Choose this option</button>
