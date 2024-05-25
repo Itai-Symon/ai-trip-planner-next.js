@@ -112,15 +112,19 @@ export default function Home() {
               className={styles.optionCard}
               onClick={() => handleOptionSelect(option)}
             >
-              <h3>{option.destination}</h3>
+              {console.log(option)}
+              <p>Destination: {option.destination}</p>
               <p>Hotel: {option.hotel}</p>
-              <p>Budget: ${option.total_cost}</p>
+              <p>Hotel Price: ${option.hotel_price}</p>
+              <p>Going Flight: {JSON.stringify(option.going_flight)}</p>
+              <p>Returning Flight: {JSON.stringify(option.returning_flight)}</p>
+              <p>Total Price: ${option.price}</p>
             </div>
           ))}
         </div>
       )}
 
-      {step === 3 && selectedOption && (
+      {/* {step === 3 && selectedOption && (
         <div>
           <h2>Trip Summary</h2>
           <div>
@@ -154,7 +158,7 @@ export default function Home() {
             ))}
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }
