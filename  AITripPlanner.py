@@ -236,54 +236,58 @@ def get_possible_destinations(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@ app.get("/generate-itinerary-and-images")
-def generate_itinerary_and_images(
-    destination: str, start_date: str, end_date: str, trip_type:str, going_flight:str, returning_flight:str, hotel:str, hotel_image:str, price:int
-) -> List[Dict[str, Any]]:
 
-    # chosen_option = {'name': 'Lanzerac Wine Estate', 'price': 6378, 'image_url': {'thumbnail': 'https://lh3.googleusercontent.com/proxy/6KPWMK4_GyB8XKo03zGJS5x67qUHgqMFxeuifLWZ77fEv3WfjdVvdPfSvA8NxbXQeqqiUSgh5AIhcI3ZLp7V9PXkdUcQdBP7edosNAXV8jXoHS13rCbC2qYKFcpG1w8rHrD0tCslvPSw7FpZwjBxJaFjqWuclw=s287-w287-h192-n-k-no-v1', 'original_image': 'https://images.trvl-media.com/lodging/2000000/1180000/1179800/1179790/7fae941e_z.jpg'}, 'destination': 'Stellenbosch', 'going_flight': {'Cape Town': {'price': 1042, 'departure_token': 'WyJDalJJU0VWalZGOXZWWGxCZVVGQlFuaG9OMmRDUnkwdExTMHRMUzB0TFhCcWRHNHlNRUZCUVVGQlIxcFJaRU5yUlZGc04wVkJFZ3RGVkRReE9YeEZWRGcwTnhvTENNZXRCaEFDR2dOVlUwUTRISERIclFZPSIsW1siVExWIiwiMjAyNC0wOC0wMSIsIkFERCIsbnVsbCwiRVQiLCI0MTkiXSxbIkFERCIsIjIwMjQtMDgtMDIiLCJDUFQiLG51bGwsIkVUIiwiODQ3Il1dXQ==', 'flights': {'ET 419': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-08-01 15:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-01 19:50', 'duration': 255, 'airline': 'Ethiopian', 'flight_number': 'ET 419'}, 'ET 847': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-02 08:15', 'arrival_airport_name': 'Cape Town International Airport', 'arrival_time': '2024-08-02 13:45', 'duration': 390, 'airline': 'Ethiopian', 'flight_number': 'ET 847'}}}}, 'returning_flight': {'Cape Town': {'flights': {'ET 846': {'departure_airport_name': 'Cape Town International Airport', 'departure_time': '2024-08-10 14:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-10 22:00', 'duration': 385, 'airline': 'Ethiopian', 'flight_number': 'ET 846'}, 'ET 404': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-10 23:55', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-11 04:00', 'duration': 245, 'airline': 'Ethiopian', 'flight_number': 'ET 404'}}}}}
-    
-    trip_plan_tries = 0
-    while trip_plan_tries < 3:
-        # trip_plan = ChatGPTFetcher.create_daily_plan(chosen_option['destination'], start_date, end_date, trip_type)
+
+@app.get("/generate-itinerary-and-images")
+def generate_itinerary_and_images(
+    destination: str, start_date: str, end_date: str, trip_type:str
+) -> List[Dict[str, Any]]:
+    try:
+        # chosen_option = {'name': 'Lanzerac Wine Estate', 'price': 6378, 'image_url': {'thumbnail': 'https://lh3.googleusercontent.com/proxy/6KPWMK4_GyB8XKo03zGJS5x67qUHgqMFxeuifLWZ77fEv3WfjdVvdPfSvA8NxbXQeqqiUSgh5AIhcI3ZLp7V9PXkdUcQdBP7edosNAXV8jXoHS13rCbC2qYKFcpG1w8rHrD0tCslvPSw7FpZwjBxJaFjqWuclw=s287-w287-h192-n-k-no-v1', 'original_image': 'https://images.trvl-media.com/lodging/2000000/1180000/1179800/1179790/7fae941e_z.jpg'}, 'destination': 'Stellenbosch', 'going_flight': {'Cape Town': {'price': 1042, 'departure_token': 'WyJDalJJU0VWalZGOXZWWGxCZVVGQlFuaG9OMmRDUnkwdExTMHRMUzB0TFhCcWRHNHlNRUZCUVVGQlIxcFJaRU5yUlZGc04wVkJFZ3RGVkRReE9YeEZWRGcwTnhvTENNZXRCaEFDR2dOVlUwUTRISERIclFZPSIsW1siVExWIiwiMjAyNC0wOC0wMSIsIkFERCIsbnVsbCwiRVQiLCI0MTkiXSxbIkFERCIsIjIwMjQtMDgtMDIiLCJDUFQiLG51bGwsIkVUIiwiODQ3Il1dXQ==', 'flights': {'ET 419': {'departure_airport_name': 'Ben Gurion Airport', 'departure_time': '2024-08-01 15:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-01 19:50', 'duration': 255, 'airline': 'Ethiopian', 'flight_number': 'ET 419'}, 'ET 847': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-02 08:15', 'arrival_airport_name': 'Cape Town International Airport', 'arrival_time': '2024-08-02 13:45', 'duration': 390, 'airline': 'Ethiopian', 'flight_number': 'ET 847'}}}}, 'returning_flight': {'Cape Town': {'flights': {'ET 846': {'departure_airport_name': 'Cape Town International Airport', 'departure_time': '2024-08-10 14:35', 'arrival_airport_name': 'Bole Addis Ababa International Airport', 'arrival_time': '2024-08-10 22:00', 'duration': 385, 'airline': 'Ethiopian', 'flight_number': 'ET 846'}, 'ET 404': {'departure_airport_name': 'Bole Addis Ababa International Airport', 'departure_time': '2024-08-10 23:55', 'arrival_airport_name': 'Ben Gurion Airport', 'arrival_time': '2024-08-11 04:00', 'duration': 245, 'airline': 'Ethiopian', 'flight_number': 'ET 404'}}}}}
+        
+        trip_plan_tries = 0
+        # while trip_plan_tries < 3:
+            # trip_plan = ChatGPTFetcher.create_daily_plan(chosen_option['destination'], start_date, end_date, trip_type)
         trip_plan = ChatGPTFetcher.create_daily_plan(destination, start_date, end_date, trip_type)
         parsed_plan = parse_trip_plan(trip_plan)
         print("parsed_plan", parsed_plan)
 
         # If the last date is missing, retry
-        if parsed_plan[-1]['date'] != end_date:
-            print("Last date missing in the trip plan. Retrying...")
-            trip_plan_tries += 1
-            continue
-        # If the last date is present, break the loop
-        break
+        # if parsed_plan[-1]['date'] != end_date:
+            # print("Last date missing in the trip plan. Retrying...")
+                # trip_plan_tries += 1
+                # continue
+            # If the last date is present, break the loop
+            # break
 
-    # trip_images = ChatGPTFetcher.generate_trip_images(destination, trip_type)
-    trip_images = []
-    print("trip_images", trip_images)
+        # trip_images = ChatGPTFetcher.generate_trip_images(destination, trip_type)
+        trip_images = [1,2,3,4]
+        print("trip_images", trip_images)
 
-    print("\nTrip Summary:")
-    print(f"Destination: {destination}")
-    print(f"flights: {[going_flight, returning_flight]}")
-    print(f"Hotel: {hotel}")
-    print(f"Hotel image: {hotel_image}")
-    print(f"Total Cost: ${price}")
-    print(f"Trip Plan:\n{trip_plan}")
-    # print("\nTrip Images:")
-    # for idx, img_url in enumerate(trip_images):
-    #     print(f"Image {idx + 1}: {img_url}")
+        print("\nTrip Summary:")
+        print(f"Destination: {destination}")
+        # print(f"flights: {[going_flight, returning_flight]}")
+        # print(f"Hotel: {hotel}")
+        # print(f"Hotel image: {hotel_image}")
+        # print(f"Total Cost: ${price}")
+        print(f"Trip Plan:\n{trip_plan}")
+        # print("\nTrip Images:")
+        # for idx, img_url in enumerate(trip_images):
+        #     print(f"Image {idx + 1}: {img_url}")
 
-    return {
-        "destination": destination,
-        "going flights": going_flight,
-         "returning flights": returning_flight,
-        "hotel": hotel,
-        "hotel_image": hotel_image,
-        "total_cost": price,
-        "trip_plan": trip_plan,
-        "trip_images": trip_images
-    }
-
+        return [{
+            "destination": destination,
+            # "going flights": going_flight,
+            #  "returning flights": returning_flight,
+            # "hotel": hotel,
+            # "hotel_image": hotel_image,
+            # "total_cost": price,
+            "trip_plan": trip_plan,
+            "trip_images": trip_images
+        }]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+ 
 
 if __name__ == "__main__":
     import uvicorn

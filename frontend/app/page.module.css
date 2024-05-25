@@ -231,9 +231,33 @@
   
 }
 .container {
-  padding: 20px;
+  font-size: 1.2rem;
+  padding: 1rem;
 }
 
+.section {
+  margin-bottom: 2rem;
+}
+
+.formInput {
+  font-size: 1rem;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.formInput input,
+.formInput textarea {
+  width: 100%;
+}
+
+.button[type="submit"] {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  background-color: #0070f3;
+  color: #fff;
+  cursor: pointer;
+}
 .heading {
   text-align: center;
 }
