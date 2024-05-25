@@ -50,35 +50,46 @@ export default function Home() {
   };
 
   const renderFlightDetails = (flight) => {
+    console.log(flight);  // Print the flight parameter to the console
+    if (!flight || !flight.flights) {
+      return <div>No flight details available.</div>;
+  }
+
+    const { flights, price } = flight;
+
     return (
-      <table className={styles.flightTable}>
-        <thead>
-          <tr>
-            <th>Flight Number</th>
-            <th>Airline</th>
-            <th>Departure Airport</th>
-            <th>Departure Time</th>
-            <th>Arrival Airport</th>
-            <th>Arrival Time</th>
-            <th>Duration (minutes)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.values(flight).map((details, index) => (
-            <tr key={index}>
-              <td>{details.flight_number}</td>
-              <td>{details.airline}</td>
-              <td>{details.departure_airport_name}</td>
-              <td>{details.departure_time}</td>
-              <td>{details.arrival_airport_name}</td>
-              <td>{details.arrival_time}</td>
-              <td>{details.duration}</td>
+      <div>
+        {price && <h3>Total Price: ${price}</h3>}
+        <table className={styles.flightTable}>
+          <thead>
+            <tr>
+              <th>Flight Number</th>
+              <th>Airline</th>
+              <th>Departure Airport</th>
+              <th>Departure Time</th>
+              <th>Arrival Airport</th>
+              <th>Arrival Time</th>
+              <th>Duration (minutes)</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {Object.entries(flights).map(([flightNumber, details], index) => (
+              <tr key={index}>
+                <td>{flightNumber}</td>
+                <td>{details.airline || 'N/A'}</td>
+                <td>{details.departure_airport_name}</td>
+                <td>{details.departure_time}</td>
+                <td>{details.arrival_airport_name}</td>
+                <td>{details.arrival_time}</td>
+                <td>{details.duration}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     );
-  };
+};
+
 
   return (
     <div className={styles.container}>
@@ -137,30 +148,36 @@ export default function Home() {
       {step === 2 && (
         <div className={styles.optionsContainer}>
           <h2 className={styles.subheading}>Select a Trip Option</h2>
-          {tripOptions.map((option) => (
-            <div
-              key={option.id}
-              className={styles.optionCard}
-            >
-              <p>Destination: {option.destination}</p>
-              <p>Hotel: {option.hotel}</p>
-              <p>Hotel Price: ${option.hotel_price}</p>
-              <h3>Going Flight</h3>
-              {renderFlightDetails(option.going_flight)}
-              <h3>Returning Flight</h3>
-              {renderFlightDetails(option.returning_flight)}
-              <p>Total Price: ${option.price}</p>
-              <button onClick={() => handleOptionSelect(option)}>Choose this option</button>
-            </div>
-          ))}
+          {tripOptions.map((option) => {
+            console.log('option:',option);  // Print the option to the console
+            console.log('option.going_flight:',option.going_flight['Tokyo']);  // Print the going_flight to the console
+            return (
+              <div
+                key={option.id}
+                className={styles.optionCard}
+              >
+                <p>Destination: {option.destination}</p>
+                <h3>Going Flight</h3>
+                {renderFlightDetails(option.going_flight['Tokyo'])}
+                <h3>Returning Flight</h3>
+                {renderFlightDetails(option.returning_flight['Tokyo'])}
+                <p>Hotel: {option.hotel}</p>
+                <p>Hotel Price: ${option.hotel_price}</p>
+                <p>Total Price: ${option.price}</p>
+                <button onClick={() => handleOptionSelect(option)}>Choose this option</button>
+              </div>
+            );
+          })}
         </div>
       )}
+
 
       {step === 3 && selectedOption && (
         <div className={styles.summaryContainer}>
           <h2>Trip Summary</h2>
           <div>
             <h3>Destination</h3>
+            <p>Flight Price: {selectedOption.going_flight.price}</p>
             <p>{selectedOption.destination}</p>
           </div>
           <div>
@@ -196,34 +213,3 @@ export default function Home() {
     </div>
   );
 }
-
-const renderFlightDetails = (flight) => {
-  return (
-    <table>
-      <thead>
-        <tr>
-          <th>Flight Number</th>
-          <th>Airline</th>
-          <th>Departure Airport</th>
-          <th>Departure Time</th>
-          <th>Arrival Airport</th>
-          <th>Arrival Time</th>
-          <th>Duration (minutes)</th>
-        </tr>
-      </thead>
-      <tbody>
-        {Object.values(flight).map((details, index) => (
-          <tr key={index}>
-            <td>{details.flight_number}</td>
-            <td>{details.airline}</td>
-            <td>{details.departure_airport_name}</td>
-            <td>{details.departure_time}</td>
-            <td>{details.arrival_airport_name}</td>
-            <td>{details.arrival_time}</td>
-            <td>{details.duration}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-};
