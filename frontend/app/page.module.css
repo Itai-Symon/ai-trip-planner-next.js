@@ -227,4 +227,73 @@
   to {
     transform: rotate(0deg);
   }
+
+  
+}
+.container {
+  padding: 20px;
+}
+
+.heading {
+  text-align: center;
+}
+
+.subheading {
+  margin-top: 20px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.form label {
+  margin: 10px 0;
+}
+
+.form input, .form select {
+  margin-left: 10px;
+}
+
+.optionsContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.optionCard {
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 20px;
+  margin: 10px 0;
+  width: 80%;
+}
+
+.optionCard button {
+  margin-top: 10px;
+}
+
+.summaryContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.flightTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+}
+
+.flightTable th, .flightTable td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+
+.tripImage {
+  width: 200px;
+  height: auto;
+  margin: 5px;
 }
