@@ -12,10 +12,12 @@ export default function Home() {
   const [tripOptions, setTripOptions] = useState([]);
   const [selectedOption, setSelectedOption] = useState(null);
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStep(2);
+    setLoading(true); // Set loading to true when request starts
     try {
       const res = await axios.get('http://localhost:8000/possible-destinations', {
         params: {
@@ -28,12 +30,14 @@ export default function Home() {
       setTripOptions(res.data);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false); // Set loading to false when request completes
     }
   };
 
   const handleOptionSelect = async (option) => {
     setSelectedOption(option);
-    console.log('setting chosen option to selectedOption:',option);  // Print the option to the console
+    console.log('setting chosen option to selectedOption:', option);
     setStep(3);
     try {
       const res = await axios.get('http://localhost:8000/generate-itinerary-and-images', {
@@ -44,9 +48,9 @@ export default function Home() {
           trip_type: tripType,
         },
       });
-      console.log('res:',res.data[0]);  // Print the res to the console
+      console.log('res:', res.data[0]);
       setSelectedOption({ ...option, ...res.data[0] });
-      console.log('Selected Option:',selectedOption);  // Print the selectedOption to the console
+      console.log('Selected Option:', selectedOption);
     } catch (err) {
       console.log('inside catch!')
       console.error(err);
@@ -54,14 +58,14 @@ export default function Home() {
   };
 
   const renderFlightDetails = (flight, type) => {
-    console.log(flight);  // Print the flight parameter to the console
+    console.log(flight);
     const city = Object.keys(flight)[0];
-    console.log('city:',city);  // Print the city to the console
+    console.log('city:', city);
     const flight_direction = type === 'going_flight' ? 'Going' : 'Returning';
     if (!flight || !flight[city].flights) {
       return <div>No flight details available.</div>;
-  }
-    
+    }
+
     const { flights, price } = flight[city];
     return (
       <div>
@@ -196,28 +200,33 @@ export default function Home() {
       {step === 2 && (
         <div className={styles.optionsContainer}>
           <h2 className={styles.subheading}>Select a Trip Option</h2>
-          {tripOptions.map((option) => {
-            console.log('option:',option);  // Print the option to the console
-            // console.log('option.going_flight:',option.going_flight['Tokyo']);  // Print the going_flight to the console
-            return (
-              <div
-                key={option.id}
-                className={styles.optionCard}
-              >
-                <p>Destination: {option.destination}</p>
-                {renderFlightDetails(option.going_flight, 'going_flight')}
-                {renderFlightDetails(option.returning_flight, 'returning_flight')}
-                <p>Hotel: {option.hotel}</p>
-                <img src={option.hotel_image} className={styles.tripImage} />
-                <p>Hotel Price: ${option.hotel_price}</p>
-                <p>Total Price: ${option.price}</p>
-                <button onClick={() => handleOptionSelect(option)}>Choose this option</button>
-              </div>
-            );
-          })}
+          {loading ? (
+            <div className={styles.loadingMessage}>
+              <p>Loading options...</p>
+            </div>
+          ) : (
+            <>
+              {tripOptions.length > 0 ? (
+                tripOptions.map((option) => (
+                  <div key={option.id} className={styles.optionCard}>
+                    <p>Destination: {option.destination}</p>
+                    {renderFlightDetails(option.going_flight, 'going_flight')}
+                    {renderFlightDetails(option.returning_flight, 'returning_flight')}
+                    <p>Hotel: {option.hotel}</p>
+                    <p>Hotel Price: ${option.hotel_price}</p>
+                    <p>Total Price: ${option.price}</p>
+                    <button onClick={() => handleOptionSelect(option)}>Choose this option</button>
+                  </div>
+                ))
+              ) : (
+                <div className={styles.noDataMessage}>
+                  <p>No trip options found. Please try adjusting your search criteria.</p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
-
 
       {step === 3 && selectedOption && (
         <div className={styles.summaryContainer}>
@@ -229,8 +238,8 @@ export default function Home() {
           <div>
             <h3>Flights</h3>
             <div>
-              {renderFlightDetails(selectedOption.going_flight,'going_flight')}
-              {renderFlightDetails(selectedOption.returning_flight,'returning_flight')}
+              {renderFlightDetails(selectedOption.going_flight, 'going_flight')}
+              {renderFlightDetails(selectedOption.returning_flight, 'returning_flight')}
             </div>
           </div>
           <div>
@@ -245,13 +254,12 @@ export default function Home() {
           <div>
             {renderTripPlan(selectedOption.trip_plan)}
           </div>
-            <div>
-              <h3>Trip Images</h3>
-              {selectedOption && selectedOption.trip_images && selectedOption.trip_images.map((imgUrl, index) => (
-                <img key={index} src={imgUrl} alt={`Trip Image ${index + 1}`} className={styles.tripImage} />
-              ))}
-            </div>
-
+          <div>
+            <h3>Trip Images</h3>
+            {selectedOption.trip_images && selectedOption.trip_images.map((imgUrl, index) => (
+              <img key={index} src={imgUrl} alt={`Trip Image ${index + 1}`} className={styles.tripImage} />
+            ))}
+          </div>
         </div>
       )}
     </div>

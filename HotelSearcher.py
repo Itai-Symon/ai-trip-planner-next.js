@@ -64,6 +64,7 @@ def get_most_expensive_hotel(data, budget):
 
 def get_hotels_in_budget(destinations, budgets, start_date, end_date):
     hotels = {}
+    print("maximumprice for hotels", budgets)
     for index, destination in enumerate(destinations):
         params = {
         "engine": "google_hotels",

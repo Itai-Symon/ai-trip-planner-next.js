@@ -334,3 +334,54 @@
   margin: 0;
   color: #888;
 }
+.loadingMessage {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #555;
+}
+
+.noDataMessage {
+  background-color: #f2f2f2;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+  color: #888;
+}
+
+.noDataMessage p {
+  margin: 0;
+}
+
+/* Set font size and line height based on rem units */
+.html {
+  font-size: 16px; /* set base font size */
+  line-height: 1.5; /* set base line height */
+}
+
+/* Set font sizes for headings */
+.description {
+  font-size: 2.5rem; /* 40px */
+}
+
+.h2 {
+  font-size: 2rem; /* 32px */
+}
+
+.h3 {
+  font-size: 1.75rem; /* 28px */
+}
+
+.h4 {
+  font-size: 1.5rem; /* 24px */
+}
+
+/* Set font size for body text */
+.body {
+  font-size: 1rem; /* 16px */
+}
