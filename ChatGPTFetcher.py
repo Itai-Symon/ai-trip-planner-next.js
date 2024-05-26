@@ -59,7 +59,7 @@ def create_daily_plan(destination, start_date, end_date, trip_type):
         f" Evening: Dinner at Miku Vancouver for delicious sushi. Stroll along the Vancouver Seawall.\n"
         f" Attractions: Stanley Park, Vancouver Aquarium, Vancouver Seawall.\n"
         f" Special Events: Summer Night Market.\n"
-        f"Repeat this format for each day from {start_date} to {end_date}, ensuring that each day's plan is detailed and tailored to the specified trip type."
+        f"Repeat this format for each day from {start_date} to {end_date}."
     )
     
     response = client.chat.completions.create(
